@@ -1,0 +1,1 @@
+& .\tools\igen.ps1; dub test; ndisasm.exe raw.bin -b 64
