@@ -1,3 +1,9 @@
+@section .data
+
+hello: db "Hello, world", 0x0A, 0x00
+
+@section .text
+
 _main:
     add al, 2
     add eax, -2

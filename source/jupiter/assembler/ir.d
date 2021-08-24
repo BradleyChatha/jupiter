@@ -13,15 +13,43 @@ struct R32 { Register value; void validate() { enforce(this.value.type == Instru
 struct R64 { Register value; void validate() { enforce(this.value.type == Instruction.OperandType.r64, "Expected an r64, not "~this.value.type.to!string); } }
 struct Mem { ulong value; }
 struct Label { string name; }
+struct D(alias T) 
+{ 
+    Expression[] values;
+
+    void pushBytes(R)(ref R bytes, ref IRState state)
+    {
+        foreach(exp; this.values)
+        exp.match!(
+            (StringExpression str)
+            {
+                // TODO: Unicode support.
+                foreach(ch; str.str)
+                    bytes.put(nativeToLittleEndian(cast(T)ch)[0..$]);
+            },
+            (NumberExpression num)
+            {
+                bytes.put(nativeToLittleEndian(cast(T)num.asInt)[0..$]);
+            },
+            (_) { throw new Exception("Cannot use expression %s with db,dw,dd,dq mneumonics.".format(_)); }
+        );
+    }
+}
 
 alias RM8 = SumType!(R8, Mem, Label);
 alias RM16 = SumType!(R16, Mem, Label);
 alias RM32 = SumType!(R32, Mem, Label);
 alias RM64 = SumType!(R64, Mem, Label);
-alias IRSum = SumType!ALL_IR;
+
+alias Db = D!byte;
+alias Dw = D!short;
+alias Dd = D!int;
+alias Dq = D!long;
+alias IRSum = SumType!(ALL_IR, Db, Dw, Dd, Dq);
 
 struct IR
 {
+    IRState.Label[] labels;
     IRSum value;
 }
 
@@ -36,9 +64,6 @@ struct IRState
     static struct Label
     {
         string name;
-        string sourceSection;
-        size_t sourceOpcode;
-        bool isExtern;
     }
 
     static struct Section
@@ -48,7 +73,6 @@ struct IRState
     }
 
     LabelRef[] labelRefs;
-    Label[] labels;
     Section[string] sections;
     string[] globals;
     string[] externs;
@@ -67,11 +91,7 @@ IRState ir1(Syntax2Result ast)
 
     Foreach: foreach(n; ast.nodes)
     {
-        if(auto node = cast(ParentLabelNode2)n)
-            state.labels ~= IRState.Label(node.name, sectionName, section.ir.length, false);
-        else if(auto node = cast(ChildLabelNode2)n)
-            state.labels ~= IRState.Label(node.parent.name~"."~node.name, sectionName, section.ir.length, false);
-        else if(auto node = cast(SectionDirective2)n)
+        if(auto node = cast(SectionDirective2)n)
         {
             sectionName = node.name;
             section = sectionName in state.sections;
@@ -87,6 +107,26 @@ IRState ir1(Syntax2Result ast)
             state.externs ~= node.name;
         else if(auto node = cast(OpcodeNode2)n)
         {
+            IRState.Label[] labels;
+            foreach(label; node.labels)
+            {
+                if(auto plabel = cast(ParentLabelNode2)label)
+                    labels ~= IRState.Label(plabel.name);
+                else if (auto clabel = cast(ChildLabelNode2)label)
+                    labels ~= IRState.Label(clabel.parent.name~"."~clabel.name);
+                else
+                    assert(false);
+            }
+
+            if(node.node.mneumonic == MneumonicHigh.db)
+            { section.ir ~= IR(labels, IRSum(Db(node.node.params))); continue; }
+            else if(node.node.mneumonic == MneumonicHigh.dw)
+            { section.ir ~= IR(labels, IRSum(Dw(node.node.params))); continue; }
+            else if(node.node.mneumonic == MneumonicHigh.dd)
+            { section.ir ~= IR(labels, IRSum(Dd(node.node.params))); continue; }
+            else if(node.node.mneumonic == MneumonicHigh.dq)
+            { section.ir ~= IR(labels, IRSum(Dq(node.node.params))); continue; }
+
             Instruction.OperandType o1_t, o2_t, o3_t;
             if(node.node.params.length >= 1) o1_t = getOpcodeOperandType(node.node.params[0], node.node.type, node.node.mneumonic);
             if(node.node.params.length >= 2) o2_t = getOpcodeOperandType(node.node.params[1], node.node.type, node.node.mneumonic);
@@ -125,7 +165,7 @@ IRState ir1(Syntax2Result ast)
             {
                 if(ir.inst == inst)
                 {
-                    section.ir ~= IR(IRSum(ir(node.node.params)));
+                    section.ir ~= IR(labels, IRSum(ir(node.node.params)));
                     continue Foreach;
                 }
             }
@@ -135,9 +175,10 @@ IRState ir1(Syntax2Result ast)
     }
 
     Appender!(ubyte[]) b;
-    foreach(ir; section.ir)
+    foreach(s; state.sections.byValue)
     {
-        ir.value.match!((_) => _.pushBytes(b, state));
+        foreach(ir; s.ir)
+            ir.value.match!((_) => _.pushBytes(b, state));
     }
     std.file.write("raw.bin", b.data);
 
@@ -174,11 +215,11 @@ void addNotFoundError(ref IRState state, OpcodeNode2 node, Instruction.OperandTy
         {
             output.put("        ");
             output.put(form.mneumonic.to!string);
-            output.put(" ");
+            output.put("\t");
             output.put(form.o1_t.to!string);
-            output.put(", ");
+            output.put(",\t");
             output.put(form.o2_t.to!string);
-            output.put(", ");
+            output.put(",\t");
             output.put(form.o3_t.to!string);
             output.put("\n");
         }
@@ -248,6 +289,4 @@ unittest
     auto p = Parser(l);
     auto s = syntax2(p.root);
     auto ir = ir1(s);
-    import std;
-    writeln(ir);
 }

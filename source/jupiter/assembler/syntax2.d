@@ -7,6 +7,7 @@ import std, jupiter.assembler;
 abstract class Syntax2Node
 {
     Token token;
+    LabelNode2[] labels;
 }
 
 abstract class LabelNode2 : Syntax2Node
@@ -59,39 +60,36 @@ final class OpcodeNode2 : Syntax2Node
 struct Syntax2Result
 {
     Syntax2Node[] nodes;
-    LabelNode2[string] labels;
 }
 
 Syntax2Result syntax2(AstNode*[] root)
 {
     Syntax2Result ret;
     ParentLabelNode2 lastParentLabel;
-    LabelNode2 lastLabel;
+    LabelNode2[] labelStack;
 
     foreach(n; root)
     {
         (*n).match!(
             (ParentLabelNode n)
             {
-                enforce(!lastLabel, formatTokenLocation(n.tok)~"Cannot have two labels reference the same instruction.");
                 lastParentLabel = new ParentLabelNode2(null, n.name);
-                lastLabel = lastParentLabel;
-                ret.labels[n.name] = lastParentLabel;
+                labelStack ~= lastParentLabel;
             },
             (ChildLabelNode n)
             {
                 enforce(lastParentLabel, formatTokenLocation(n.tok)~"Cannot have a child label without a parent.");
-                enforce(!lastLabel, formatTokenLocation(n.tok)~"Cannot have two labels reference the same instruction.");
-                lastLabel = new ChildLabelNode2(null, n.name, lastParentLabel);
-                ret.labels[lastParentLabel.name~"."~n.name] = lastLabel;
+                auto label = new ChildLabelNode2(null, n.name, lastParentLabel);
+                labelStack ~= label;
             },
             (OpcodeNode n)
             {
-                ret.nodes ~= new OpcodeNode2(n);
-                if(lastLabel)
+                auto opcode = new OpcodeNode2(n);
+                ret.nodes ~= opcode;
+                if(labelStack.length)
                 {
-                    lastLabel.opcode = cast(OpcodeNode2)ret.nodes[$-1];
-                    lastLabel = null;
+                    opcode.labels = labelStack;
+                    labelStack.length = 0;
                 }
             },
             (DirectiveNode n)
