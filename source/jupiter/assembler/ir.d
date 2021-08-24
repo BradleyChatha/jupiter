@@ -52,6 +52,7 @@ struct IRState
     Section[string] sections;
     string[] globals;
     string[] externs;
+    string[] errors;
 }
 
 IRState ir1(Syntax2Result ast)
@@ -115,7 +116,10 @@ IRState ir1(Syntax2Result ast)
             );
             writeln(index, "\t", node.node.mneumonic, "\t", o1_t, "\t", o2_t, "\t", o3_t);
             if(index == -1)
+            {
+                addNotFoundError(state, node, o1_t, o2_t, o3_t);
                 continue;
+            }
             auto inst  = INSTRUCTIONS[index];
             static foreach(ir; ALL_IR)
             {
@@ -136,7 +140,51 @@ IRState ir1(Syntax2Result ast)
         ir.value.match!((_) => _.pushBytes(b, state));
     }
     std.file.write("raw.bin", b.data);
+
+    foreach(error; state.errors)
+        writeln(error);
     return state;
+}
+
+void addNotFoundError(ref IRState state, OpcodeNode2 node, Instruction.OperandType o1_t, Instruction.OperandType o2_t, Instruction.OperandType o3_t)
+{
+    Appender!(char[]) output;
+
+    output.put(formatTokenLocation(node.token));
+        output.put("Unknown opcode: "); 
+        output.put(node.node.mneumonic.to!string);
+        output.put(" ");
+        output.put(o1_t.to!string);
+        output.put(", ");
+        output.put(o2_t.to!string);
+        output.put(", ");
+        output.put(o3_t.to!string);
+    output.put("\n");
+    
+    auto forms = INSTRUCTIONS.filter!(i => i.mneumonic == node.node.mneumonic);
+    if(forms.empty)
+    {
+        output.put("    Mnuemonic is unknown. Either I haven't added it yet, or you've spelled it wrong.\n");
+        output.put("    Please note that in Jupiter, all mneumonics must be lower case (for now!).");
+    }
+    else
+    {
+        output.put("    These are the valid forms for this opcode:\n");
+        foreach(form; forms)
+        {
+            output.put("        ");
+            output.put(form.mneumonic.to!string);
+            output.put(" ");
+            output.put(form.o1_t.to!string);
+            output.put(", ");
+            output.put(form.o2_t.to!string);
+            output.put(", ");
+            output.put(form.o3_t.to!string);
+            output.put("\n");
+        }
+    }
+
+    state.errors ~= output.data.assumeUnique;
 }
 
 bool operandsMatch(Instruction.OperandType instT, Instruction.OperandType userT)
