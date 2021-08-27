@@ -11,7 +11,6 @@ struct R8 { Register value; void validate() { enforce(this.value.type == Instruc
 struct R16 { Register value; void validate() { enforce(this.value.type == Instruction.OperandType.r16, "Expected an r16, not "~this.value.type.to!string); } }
 struct R32 { Register value; void validate() { enforce(this.value.type == Instruction.OperandType.r32, "Expected an r32, not "~this.value.type.to!string); } }
 struct R64 { Register value; void validate() { enforce(this.value.type == Instruction.OperandType.r64, "Expected an r64, not "~this.value.type.to!string); } }
-struct Mem { ulong value; }
 struct Label { string name; }
 struct D(alias T) 
 { 
@@ -36,10 +35,11 @@ struct D(alias T)
     }
 }
 
-alias RM8 = SumType!(R8, Mem, Label);
-alias RM16 = SumType!(R16, Mem, Label);
-alias RM32 = SumType!(R32, Mem, Label);
-alias RM64 = SumType!(R64, Mem, Label);
+alias Mem = SumType!(Imm64, Label);
+alias RM8 = SumType!(R8, Mem);
+alias RM16 = SumType!(R16, Mem);
+alias RM32 = SumType!(R32, Mem);
+alias RM64 = SumType!(R64, Mem);
 
 alias Db = D!byte;
 alias Dw = D!short;
@@ -160,7 +160,7 @@ IRState ir1(Syntax2Result ast)
                 addNotFoundError(state, node, o1_t, o2_t, o3_t);
                 continue;
             }
-            auto inst  = INSTRUCTIONS[index];
+            auto inst = INSTRUCTIONS[index];
             static foreach(ir; ALL_IR)
             {
                 if(ir.inst == inst)

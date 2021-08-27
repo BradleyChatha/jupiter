@@ -106,7 +106,6 @@ struct Instruction
         m16     = 1 << 9,
         m32     = 1 << 10,
         m64     = 1 << 11,
-        rel64   = 1 << 12,
 
         rm8     = r8 | m8,
         rm16    = r16 | m16,
@@ -869,5 +868,6 @@ immutable INSTRUCTIONS = [
     i(mh.add, "add_rm16_r16",       rex.none,   irm.r,      0, 1, 0x00, 0x00, 0x01,   iot.rm16,   iot.r16,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
     i(mh.add, "add_rm32_r32",       rex.none,   irm.r,      0, 1, 0x00, 0x00, 0x01,   iot.rm32,   iot.r32,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
     i(mh.add, "add_rm64_r64",       rex.w,      irm.r,      0, 1, 0x00, 0x00, 0x01,   iot.rm64,   iot.r64,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
+    i(mh.lea, "lea_r64_m64",        rex.w,      irm.r,      0, 1, 0x00, 0x00, 0x8D,   iot.r64,    iot.m64,      iot.none,   ioe.rm_reg, ioe.rm_rm,  ioe.none),
     i(mh.ret, "retn",               rex.none,   irm.none,   0, 1, 0x00, 0x00, 0xC3,   iot.none,   iot.none,     iot.none,   ioe.none,   ioe.none,   ioe.none),
 ];

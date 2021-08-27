@@ -174,6 +174,18 @@ R64 expR64(Expression ex)
     );
     return ret;
 }
+Mem expMem(Expression ex)
+{
+    Mem ret;
+    ex.match!(
+        (IdentifierExpression label)
+        {
+            ret = Label(label.ident);
+        },
+        (_){ assert(false); }
+    );
+    return ret;
+}
 struct add_rm8_i8
 {
 	static immutable Instruction inst = INSTRUCTIONS[0];
@@ -420,9 +432,41 @@ struct add_rm64_r64
 	}
 
 }
-struct retn
+struct lea_r64_m64
 {
 	static immutable Instruction inst = INSTRUCTIONS[8];
+	R64 o0;
+	Mem o1;
+	this(Expression[] args) {
+		o0 = expR64(args[0]);
+		o1 = expMem(args[1]);	}
+	void pushBytes(R)(ref R output, ref IRState state){
+		ubyte rex = 0b0100_0000;
+		ubyte modrm;
+		bool outRex, outMod;
+		outRex = true; rex |= 8;
+		if(this.o0.value.cat >= Register.Category.r8) {
+			outRex = true;
+			rex |= Instruction.Rex.r;
+		}
+		outMod = true;
+		modrm |= this.o0.value.regNum << 3;
+		outMod = true;
+		this.o1.match!(
+            (reg) { modrm |= reg.value.regNum; if(reg.value.type == Instruction.OperandType.r64) { outRex = true; rex |= Instruction.Rex.b; } },
+            (_) { assert(false); }
+        );
+		if(outRex) output.put(rex);
+		output.put(cast(ubyte)0x8D);
+		if(outMod){
+			output.put(modrm);
+		}
+	}
+
+}
+struct retn
+{
+	static immutable Instruction inst = INSTRUCTIONS[9];
 	this(Expression[] args) {
 	}
 	void pushBytes(R)(ref R output, ref IRState state){
@@ -446,5 +490,6 @@ alias ALL_IR = AliasSeq!(
 	add_rm16_r16,
 	add_rm32_r32,
 	add_rm64_r64,
+	lea_r64_m64,
 	retn,
 );

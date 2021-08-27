@@ -56,6 +56,20 @@ void main()
     return ret;
 }
 `;
+
+    const MEM_TEMPLATE = `Mem expMem(Expression ex)
+{
+    Mem ret;
+    ex.match!(
+        (IdentifierExpression label)
+        {
+            ret = Label(label.ident);
+        },
+        (_){ assert(false); }
+    );
+    return ret;
+}
+`;
     structs.put("module jupiter.assembler._ir;\n\nimport jupiter.assembler, std, std.sumtype : match;\n\n");
     structs.put(format!IMM_TEMPLATE("8", "8", "8", "8", "ubyte", "8", "ubyte"));
     structs.put(format!IMM_TEMPLATE("16", "16", "16", "16", "short", "16", "short"));
@@ -69,6 +83,7 @@ void main()
     structs.put(format!R_TEMPLATE("16", "16", "16", "16"));
     structs.put(format!R_TEMPLATE("32", "32", "32", "32"));
     structs.put(format!R_TEMPLATE("64", "64", "64", "64"));
+    structs.put(MEM_TEMPLATE);
 
     aliases.put("alias ALL_IR = AliasSeq!(\n");
     foreach(i, inst; INSTRUCTIONS)
@@ -113,11 +128,10 @@ void gen(ref Appender!(char[]) aliases, ref Appender!(char[]) structs, size_t i,
             case imm16: structs.put("Imm16"); ctor.put("expImm16(args["~i2.to!string~"]);\n"); break; 
             case imm32: structs.put("Imm32"); ctor.put("expImm32(args["~i2.to!string~"]);\n"); break; 
             case imm64: structs.put("Imm64"); ctor.put("expImm64(args["~i2.to!string~"]);\n"); break; 
-            case m8: structs.put("M8"); break;    
-            case m16: structs.put("M16"); break;   
-            case m32: structs.put("M32"); break;   
-            case m64: structs.put("M64"); break;   
-            case rel64: structs.put("R64"); break; 
+            case m8: structs.put("Mem");     ctor.put("expMem(args["~i2.to!string~"]);"); break;    
+            case m16: structs.put("Mem");   ctor.put("expMem(args["~i2.to!string~"]);"); break;   
+            case m32: structs.put("Mem");   ctor.put("expMem(args["~i2.to!string~"]);"); break;   
+            case m64: structs.put("Mem");   ctor.put("expMem(args["~i2.to!string~"]);"); break;
 
             case rm8: structs.put("RM8"); ctor.put("expRM8(args["~i2.to!string~"]);"); break;   
             case rm16: structs.put("RM16"); ctor.put("expRM16(args["~i2.to!string~"]);"); break;  
