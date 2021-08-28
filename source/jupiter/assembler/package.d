@@ -7,5 +7,4 @@ public import
     jupiter.assembler.astprinter,
     jupiter.assembler.assembler,
     jupiter.assembler.syntax2,
-    jupiter.assembler._ir,
     jupiter.assembler.ir;

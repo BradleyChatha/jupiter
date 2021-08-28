@@ -48,7 +48,7 @@ alias Expression = SumType!(
 );
 
 enum ExpressionSize = 80;
-// static assert(ExpressionSize == Expression.sizeof);
+static assert(ExpressionSize == Expression.sizeof);
 
 struct CompoundExpression
 {
@@ -109,6 +109,7 @@ struct IndirectExpression
     Expression[] targets; // Stored as arrays otherwise forward-reference-chan will come eat me.
     CompoundExpression[] disps;
     CompoundExpression[] scales;
+    Expression[] indexs;
 
     @property @safe nothrow pure:
 
@@ -131,6 +132,13 @@ struct IndirectExpression
         if(!this.scales.length)
             this.scales.length = 1;
         return this.scales[0];
+    }
+
+    ref Expression index()
+    {
+        if(!this.indexs.length)
+            this.indexs.length = 1;
+        return this.indexs[0];
     }
 }
 

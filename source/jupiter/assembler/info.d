@@ -66,6 +66,34 @@ enum Prefix
     repnz
 }
 
+enum G2Prefix
+{
+    none,
+    cs = 0x2E,
+    ss = 0x36,
+    ds = 0x3E,
+    es = 0x26,
+    fs = 0x64,
+    gs = 0x65,
+}
+
+enum G3Prefix
+{
+    none,
+    opSize = 0x66
+}
+
+enum G4Prefix
+{
+    none,
+    addrSize = 0x67
+}
+
+private alias pg1 = Prefix;
+private alias pg2 = G2Prefix;
+private alias pg3 = G3Prefix;
+private alias pg4 = G4Prefix;
+
 private alias rc = Register.Category;
 private alias rt = Instruction.OperandType;
 private alias r = Register;
@@ -93,7 +121,9 @@ struct Instruction
     enum OperandType
     {
         none,
-        _infer = -1, // Internal
+        _infer  = -1,
+        _label  = -2,
+        _m      = -3,
         r8      = 1 << 0,
         r16     = 1 << 1,
         r32     = 1 << 2,
@@ -107,10 +137,10 @@ struct Instruction
         m32     = 1 << 10,
         m64     = 1 << 11,
 
-        rm8     = r8 | m8,
-        rm16    = r16 | m16,
-        rm32    = r32 | m32,
-        rm64    = r64 | m64,
+        rm8     = 1 << 12,
+        rm16    = 1 << 13,
+        rm32    = 1 << 14,
+        rm64    = 1 << 15,
     }
 
     enum OperandEncoding
@@ -122,7 +152,7 @@ struct Instruction
         add
     }
 
-    enum Rex
+    enum Rex : ubyte
     {
         none,
         w = 1 << 3,
@@ -131,7 +161,7 @@ struct Instruction
         b = 1 << 0,
     }
 
-    enum RmType
+    enum RegType
     {
         none  = -1,
         r     = -2,
@@ -147,9 +177,11 @@ struct Instruction
 
     MneumonicHigh mneumonic;
     string debugName;
+    G2Prefix p_g2;
+    G3Prefix p_g3;
+    G4Prefix p_g4;
     Rex rex;
-    RmType rm_t;
-    ubyte op_i_c;
+    RegType reg_t;
     ubyte op_c;
     ubyte op_1;
     ubyte op_2;
@@ -165,7 +197,7 @@ struct Instruction
 alias i = Instruction;
 alias iot = Instruction.OperandType;
 alias ioe = Instruction.OperandEncoding;
-alias irm = Instruction.RmType;
+alias ireg = Instruction.RegType;
 alias rex = Instruction.Rex;
 alias mh = MneumonicHigh;
 
@@ -860,14 +892,14 @@ enum MneumonicHigh
 
 immutable INSTRUCTIONS = [
     // KEEP INSTRUCTIONS WITH THE SAME mh ADJACENT TO EACH OTHER
-    i(mh.add, "add_rm8_i8",         rex.none,   irm.reg0,   0, 1, 0x00, 0x00, 0x80,   iot.rm8,    iot.imm8,     iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm16_i16",       rex.none,   irm.reg0,   0, 1, 0x00, 0x00, 0x81,   iot.rm16,   iot.imm16,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm32_i32",       rex.none,   irm.reg0,   0, 1, 0x00, 0x00, 0x81,   iot.rm32,   iot.imm32,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm64_i32",       rex.w,      irm.reg0,   0, 1, 0x00, 0x00, 0x81,   iot.rm64,   iot.imm32,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm8_r8",         rex.none,   irm.r,      0, 1, 0x00, 0x00, 0x00,   iot.rm8,    iot.r8,       iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "add_rm16_r16",       rex.none,   irm.r,      0, 1, 0x00, 0x00, 0x01,   iot.rm16,   iot.r16,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "add_rm32_r32",       rex.none,   irm.r,      0, 1, 0x00, 0x00, 0x01,   iot.rm32,   iot.r32,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "add_rm64_r64",       rex.w,      irm.r,      0, 1, 0x00, 0x00, 0x01,   iot.rm64,   iot.r64,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.lea, "lea_r64_m64",        rex.w,      irm.r,      0, 1, 0x00, 0x00, 0x8D,   iot.r64,    iot.m64,      iot.none,   ioe.rm_reg, ioe.rm_rm,  ioe.none),
-    i(mh.ret, "retn",               rex.none,   irm.none,   0, 1, 0x00, 0x00, 0xC3,   iot.none,   iot.none,     iot.none,   ioe.none,   ioe.none,   ioe.none),
-];
+    i(mh.add, "add_rm8_i8",         pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.reg0,  1, 0x00, 0x00, 0x80,   iot.rm8,    iot.imm8,     iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
+    i(mh.add, "add_rm16_i16",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.reg0,  1, 0x00, 0x00, 0x81,   iot.rm16,   iot.imm16,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
+    i(mh.add, "add_rm32_i32",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.reg0,  1, 0x00, 0x00, 0x81,   iot.rm32,   iot.imm32,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
+    i(mh.add, "add_rm64_i32",       pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.reg0,  1, 0x00, 0x00, 0x81,   iot.rm64,   iot.imm32,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
+    i(mh.add, "add_rm8_r8",         pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x00,   iot.rm8,    iot.r8,       iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
+    i(mh.add, "add_rm16_r16",       pg2.none,       pg3.opSize,     pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm16,   iot.r16,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
+    i(mh.add, "add_rm32_r32",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm32,   iot.r32,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
+    i(mh.add, "add_rm64_r64",       pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm64,   iot.r64,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
+    i(mh.lea, "lea_r64_m64",        pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.r,     1, 0x00, 0x00, 0x8D,   iot.r64,    iot.m64,      iot.none,   ioe.rm_reg, ioe.rm_rm,  ioe.none),
+    i(mh.ret, "retn",               pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.none,  1, 0x00, 0x00, 0xC3,   iot.none,   iot.none,     iot.none,   ioe.none,   ioe.none,   ioe.none),
+];  
