@@ -10,6 +10,7 @@ void main()
     aliases.put("alias ALL_IR = AliasSeq!(\n");
     foreach(i, inst; INSTRUCTIONS)
         gen(aliases, main, i, inst);
+    aliases.put("db, dd, dw, dq,");
     aliases.put(");\n");
 
     main.put(aliases.data);

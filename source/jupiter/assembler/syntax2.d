@@ -63,7 +63,8 @@ final class OpcodeNode2 : Syntax2Node
         this.prefix = node.prefix;
         this.type = node.type;
 
-        enforce(node.params.length <= 3, "Opcodes(at least, the ones supported by Jupiter) only support up to 3 operands.");
+        if(node.mneumonic != MneumonicHigh.db) 
+            enforce(node.params.length <= 3, "Opcodes(at least, the ones supported by Jupiter) only support up to 3 operands.");
         this.params = syntax2Expressions(node.params);
     }
 }

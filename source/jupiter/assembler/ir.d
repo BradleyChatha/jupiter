@@ -59,7 +59,7 @@ struct Mem
     Mod mod;
     ubyte rm;
     Nullable!Sib sib;
-    Nullable!int disp;
+    Nullable!long disp;
     string label;
 
     void addToModrm(ref ubyte modrm)
@@ -74,14 +74,114 @@ struct IRState
     struct LabelRef
     {
         string label;
+        string sectionName;
+        Mem mem;
         size_t locationInByteStream;
     }
 
+    struct LabelLoc
+    {
+        string label;
+        string sectionName;
+        size_t locationInByteStream;
+    }
+
+    struct Section
+    {
+        string name;
+        ByteStream bytes;
+    }
+
     LabelRef[] labelRefs;
+    LabelLoc[string] labelLocs;
+    Section[string] sections;
+    Section* currSection;
+    string[] externs;
+    string[] globals;
+
+    this(bool _)
+    {
+        this.currSection = this.getSection(".text");
+    }
+
+    Section* getSection(string name)
+    {
+        scope ptr = name in this.sections;
+        if(ptr)
+            return ptr;
+        this.sections[name] = Section(name);
+        return name in this.sections;
+    }
+}
+
+struct Declare(alias T)
+{
+    ExpressionNode2[] exps;
+
+    this(ExpressionNode2[] exps)
+    {
+        this.exps = exps;
+    }
+	void putIntoBytes(ref ByteStream bytes, ref IRState state) 
+    {
+        foreach(exp; this.exps)
+        {
+            if(auto v = cast(StringExpression2)exp)
+            {
+                foreach(ch; v.value)
+                    bytes.put((cast(T)ch).nativeToLittleEndian[]);
+            }
+            else if(auto v = cast(IntegerExpression2)exp)
+            {
+                bytes.put((cast(T)v.value).nativeToLittleEndian[]);
+            }
+            else throw new Exception("Don't know how to convert expression "~exp.classinfo.to!string~" into bytes.");
+        }
+    }
+}
+alias db = Declare!byte;
+alias dw = Declare!short;
+alias dd = Declare!int;
+alias dq = Declare!long;
+
+IRState assembleSections(Syntax2Result res)
+{
+    auto state = IRState(true);
+
+    foreach(node; res.nodes)
+    {
+        if(auto l = cast(LabelNode2)node)
+        {
+            const name = l.name;
+            enforce(!(name in state.labelLocs), formatTokenLocation(l.token)~"Redefinition of label: "~name);
+            state.labelLocs[name] = IRState.LabelLoc(name, state.currSection.name, state.currSection.bytes.data.length);
+        }
+        else if(auto d = cast(SectionDirective2)node)
+            state.currSection = state.getSection(d.name);
+        else if(auto d = cast(GlobalDirective2)node)
+            state.globals ~= d.name;
+        else if(auto d = cast(ExternDirective2)node)
+            state.externs ~= d.name;
+        else if(auto o = cast(OpcodeNode2)node)
+        {
+            size_t index;
+            findInstruction(o, index);
+            putInstructionByIndex(state.currSection.bytes, state, index, o.params);
+        }
+    }
+
+    return state;
 }
 
 Instruction findInstruction(OpcodeNode2 node, out size_t index)
 {
+    switch(node.mneumonic)
+    {
+        case MneumonicHigh.db: index = ALL_IR.length - 4; return Instruction.init;
+
+        default: break;
+    }
+
     Instruction.OperandType[3] opTypes;
     enforce(node.params.length <= 3, formatTokenLocation(node.token)~"Opcodes can only have a maximum of 3 operands.");
     foreach(i, param; node.params)
@@ -90,10 +190,8 @@ Instruction findInstruction(OpcodeNode2 node, out size_t index)
     index = INSTRUCTIONS.countUntil!(i => compareOperandTypes(i.o1_t, opTypes[0]) 
                                         && compareOperandTypes(i.o2_t, opTypes[1]) 
                                         && compareOperandTypes(i.o3_t, opTypes[2]));
-    
 
-    writeln(node.mneumonic, " ", opTypes, " ", index < 0 ? "<none>" : INSTRUCTIONS[index].to!string);
-    if(index < 0)
+    if(index == -1)
     {
         auto instWithMneumonic = INSTRUCTIONS.filter!(i => i.mneumonic == node.mneumonic);
         Appender!(char[]) error;
@@ -313,7 +411,6 @@ void putInstruction(Instruction.OperandEncoding[] Encodings, Operands...)(
     ubyte[] opcodes,
     Operands operands
 )
-if(Operands.length % 2 == 0)
 {
     ubyte modrm;
     if(reg > Instruction.RegType.reg0)
@@ -405,14 +502,14 @@ if(Operands.length % 2 == 0)
                 if(!op.mem.disp.isNull)
                 {
                     if(op.mem.label !is null)
-                        state.labelRefs ~= IRState.LabelRef(op.mem.label, stream.data.length);
+                        state.labelRefs ~= IRState.LabelRef(op.mem.label, state.currSection.name, op.mem, stream.data.length);
 
                     if(op.mem.mod == Mem.Mod.mod00)
-                        stream.put(op.mem.disp.get.nativeToLittleEndian[]);
+                        stream.put(op.mem.disp.get.to!int.nativeToLittleEndian[]);
                     else if(op.mem.mod == Mem.Mod.mod01)
                         stream.put(op.mem.disp.get.to!ubyte);
                     else if(op.mem.mod == Mem.Mod.mod10)
-                        stream.put(op.mem.disp.get.nativeToLittleEndian[]);
+                        stream.put(op.mem.disp.get.to!int.nativeToLittleEndian[]);
                 }
             }
         }
@@ -427,6 +524,19 @@ if(Operands.length % 2 == 0)
 
 unittest
 {
+    auto l = Lexer(import("test/hello_world.asm"));
+    auto p = Parser(l);
+    auto ast = syntax2(p.root);
+    auto ir = assembleSections(ast);
+
+    ByteStream bytes;
+    foreach(_, sec; ir.sections)
+        bytes.put(sec.bytes.data);
+    std.file.write("raw.bin", bytes.data);
+}
+
+unittest
+{
     static struct Test
     {
         string code;
@@ -437,6 +547,7 @@ unittest
     alias T = Test;
 
     immutable tests = [
+        T("db 1, 2, 3",         null,               [1, 2, 3]),
         T("add cl, 1",          "add_rm8_i8",       [0x80, 0b11_000_001, 0x01]),
         T("add cx, 1",          "add_rm16_i16",     [0x81, 0b11_000_001, 0x01, 0x00]),
         T("add ecx, 1",         "add_rm32_i32",     [0x81, 0b11_000_001, 0x01, 0x00, 0x00, 0x00]),
@@ -461,7 +572,7 @@ unittest
         auto inst = findInstruction(op, index);
         assert(inst.debugName == test.expectedForm, "Expected "~test.expectedForm~" but got "~inst.debugName);
 
-        IRState state;
+        auto state = IRState(true);
         ByteStream bytes;
         putInstructionByIndex(bytes, state, index, op.params);
         assert(bytes.data.equal(test.expectedBytes), "Got:%s (%s)\nExp: %s (%s)".format(

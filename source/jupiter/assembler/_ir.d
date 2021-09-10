@@ -97,6 +97,16 @@ struct add_rm64_r64 {
 	void putIntoBytes(ref ByteStream bytes, ref IRState state) {
 		bytes.putInstruction!([Instruction.OperandEncoding.rm_rm, Instruction.OperandEncoding.rm_reg, Instruction.OperandEncoding.none, ])(state, Prefix.none, G2Prefix.none, G3Prefix.none, G4Prefix.none, this.rex, Instruction.RegType.r, [cast(ubyte)0x1, ], o0, o1, );	}
 }
+struct call_rm64 {
+	Instruction.Rex rex;
+	RM64 o0;
+	this(ExpressionNode2[] params) {
+		this.rex = Instruction.Rex.w;
+		tryGetRegMem!64(params[0], this.o0, this.rex);
+	}
+	void putIntoBytes(ref ByteStream bytes, ref IRState state) {
+		bytes.putInstruction!([Instruction.OperandEncoding.rm_rm, Instruction.OperandEncoding.none, Instruction.OperandEncoding.none, ])(state, Prefix.none, G2Prefix.none, G3Prefix.none, G4Prefix.none, this.rex, Instruction.RegType.reg2, [cast(ubyte)0xFF, ], o0, );	}
+}
 struct lea_r64_m64 {
 	Instruction.Rex rex;
 	R64 o0;
@@ -126,6 +136,7 @@ alias ALL_IR = AliasSeq!(
 	add_rm16_r16,
 	add_rm32_r32,
 	add_rm64_r64,
+	call_rm64,
 	lea_r64_m64,
 	retn,
-);
+db, dd, dw, dq,);

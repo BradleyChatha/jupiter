@@ -900,6 +900,7 @@ immutable INSTRUCTIONS = [
     i(mh.add, "add_rm16_r16",       pg2.none,       pg3.opSize,     pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm16,   iot.r16,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
     i(mh.add, "add_rm32_r32",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm32,   iot.r32,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
     i(mh.add, "add_rm64_r64",       pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm64,   iot.r64,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
+    i(mh.add, "call_rm64",          pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.reg2,  1, 0x00, 0x00, 0xFF,   iot.rm64,   iot.none,     iot.none,   ioe.rm_rm,  ioe.none,   ioe.none),
     i(mh.lea, "lea_r64_m64",        pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.r,     1, 0x00, 0x00, 0x8D,   iot.r64,    iot.m64,      iot.none,   ioe.rm_reg, ioe.rm_rm,  ioe.none),
     i(mh.ret, "retn",               pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.none,  1, 0x00, 0x00, 0xC3,   iot.none,   iot.none,     iot.none,   ioe.none,   ioe.none,   ioe.none),
 ];  
