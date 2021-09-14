@@ -16,3 +16,5 @@ jupiter-test-*
 test.asm
 raw.bin
 test.bin
+tools/tool
+tools/irgen

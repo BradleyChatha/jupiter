@@ -3,31 +3,31 @@ module jupiter.assembler.info;
 
 import std;
 
-MneumonicHigh[string] g_highMneumonics;
+Mneumonic[string] g_highMneumonics;
 Register[string] g_registers;
 SizeType[string] g_sizeTypes;
 
 shared static this()
 {
-    static foreach(member; __traits(allMembers, MneumonicHigh))
-        g_highMneumonics[member] = mixin("MneumonicHigh."~member);
+    static foreach(member; __traits(allMembers, Mneumonic))
+        g_highMneumonics[member] = mixin("Mneumonic."~member);
     static foreach(reg; Registers)
         g_registers[reg.name] = reg;
     g_sizeTypes = [
-        "byte": SizeType.imm8,
-        "word": SizeType.imm16,
-        "dword": SizeType.imm32,
-        "qword": SizeType.imm64,
+        "byte":     SizeType.s8,
+        "word":     SizeType.s16,
+        "dword":    SizeType.s32,
+        "qword":    SizeType.s64,
     ];
 }
 
 enum SizeType
 {
     infer,
-    imm8,
-    imm16,
-    imm32,
-    imm64
+    s8 = 1,
+    s16 = 2,
+    s32 = 4,
+    s64 = 8
 }
 
 struct Register
@@ -53,7 +53,7 @@ struct Register
     }
 
     string name;
-    Instruction.OperandType type; // Only the "r" values are valid.
+    SizeType size;
     Category cat;
     ubyte regNum;
 }
@@ -95,25 +95,25 @@ private alias pg3 = G3Prefix;
 private alias pg4 = G4Prefix;
 
 private alias rc = Register.Category;
-private alias rt = Instruction.OperandType;
+private alias st = SizeType;
 private alias r = Register;
 immutable Registers = [
-    r("rax",    rt.r64, rc.rax, 0), r("eax",    rt.r32, rc.rax, 0), r("ax",     rt.r16, rc.rax, 0), r("ah",     rt.r8, rc.rax, 0), r("al", rt.r8, rc.rax, 0),
-    r("rbx",    rt.r64, rc.rbx, 3), r("ebx",    rt.r32, rc.rbx, 3), r("bx",     rt.r16, rc.rbx, 3), r("bh",     rt.r8, rc.rbx, 3), r("bl", rt.r8, rc.rbx, 3),
-    r("rcx",    rt.r64, rc.rcx, 1), r("ecx",    rt.r32, rc.rcx, 1), r("cx",     rt.r16, rc.rcx, 1), r("ch",     rt.r8, rc.rcx, 1), r("cl", rt.r8, rc.rcx, 1),
-    r("rdx",    rt.r64, rc.rdx, 2), r("edx",    rt.r32, rc.rdx, 2), r("dx",     rt.r16, rc.rdx, 2), r("dh",     rt.r8, rc.rdx, 2), r("dl", rt.r8, rc.rdx, 2),
-    r("rsi",    rt.r64, rc.rsi, 6), r("esi",    rt.r32, rc.rsi, 6), r("si",     rt.r16, rc.rsi, 6), r("sil",    rt.r8, rc.rsi, 6),
-    r("rdi",    rt.r64, rc.rdi, 7), r("edi",    rt.r32, rc.rdi, 7), r("di",     rt.r16, rc.rdi, 7), r("dil",    rt.r8, rc.rdi, 7),
-    r("rsp",    rt.r64, rc.rsp, 4), r("esp",    rt.r32, rc.rsp, 4), r("sp",     rt.r16, rc.rsp, 4), r("spl",    rt.r8, rc.rsp, 4),
-    r("rbp",    rt.r64, rc.rbp, 5), r("ebp",    rt.r32, rc.rbp, 5), r("bp",     rt.r16, rc.rbp, 5), r("bpl",    rt.r8, rc.rbp, 5),
-    r("r8",     rt.r64, rc.r8,  0), r("r8d",    rt.r32, rc.r8,  0), r("r8w",    rt.r16, rc.r8,  0), r("r8b",    rt.r8, rc.r8,  0),
-    r("r9",     rt.r64, rc.r9,  1), r("r9d",    rt.r32, rc.r9,  1), r("r9w",    rt.r16, rc.r9,  1), r("r9b",    rt.r8, rc.r9,  1),
-    r("r10",    rt.r64, rc.r10, 2), r("r10d",   rt.r32, rc.r10, 2), r("r10w",   rt.r16, rc.r10, 2), r("r10b",   rt.r8, rc.r10, 2),
-    r("r11",    rt.r64, rc.r11, 3), r("r11d",   rt.r32, rc.r11, 3), r("r11w",   rt.r16, rc.r11, 3), r("r11b",   rt.r8, rc.r11, 3),
-    r("r12",    rt.r64, rc.r12, 4), r("r12d",   rt.r32, rc.r12, 4), r("r12w",   rt.r16, rc.r12, 4), r("r12b",   rt.r8, rc.r12, 4),
-    r("r13",    rt.r64, rc.r13, 5), r("r13d",   rt.r32, rc.r13, 5), r("r13w",   rt.r16, rc.r13, 5), r("r13b",   rt.r8, rc.r13, 5),
-    r("r14",    rt.r64, rc.r14, 6), r("r14d",   rt.r32, rc.r14, 6), r("r14w",   rt.r16, rc.r14, 6), r("r14b",   rt.r8, rc.r14, 6),
-    r("r15",    rt.r64, rc.r15, 7), r("r15d",   rt.r32, rc.r15, 7), r("r15w",   rt.r16, rc.r15, 7), r("r15b",   rt.r8, rc.r15, 7),
+    r("rax",    st.s64, rc.rax, 0), r("eax",    st.s32, rc.rax, 0), r("ax",     st.s16, rc.rax, 0), r("ah",     st.s8, rc.rax, 0), r("al", st.s8, rc.rax, 0),
+    r("rbx",    st.s64, rc.rbx, 3), r("ebx",    st.s32, rc.rbx, 3), r("bx",     st.s16, rc.rbx, 3), r("bh",     st.s8, rc.rbx, 3), r("bl", st.s8, rc.rbx, 3),
+    r("rcx",    st.s64, rc.rcx, 1), r("ecx",    st.s32, rc.rcx, 1), r("cx",     st.s16, rc.rcx, 1), r("ch",     st.s8, rc.rcx, 1), r("cl", st.s8, rc.rcx, 1),
+    r("rdx",    st.s64, rc.rdx, 2), r("edx",    st.s32, rc.rdx, 2), r("dx",     st.s16, rc.rdx, 2), r("dh",     st.s8, rc.rdx, 2), r("dl", st.s8, rc.rdx, 2),
+    r("rsi",    st.s64, rc.rsi, 6), r("esi",    st.s32, rc.rsi, 6), r("si",     st.s16, rc.rsi, 6), r("sil",    st.s8, rc.rsi, 6),
+    r("rdi",    st.s64, rc.rdi, 7), r("edi",    st.s32, rc.rdi, 7), r("di",     st.s16, rc.rdi, 7), r("dil",    st.s8, rc.rdi, 7),
+    r("rsp",    st.s64, rc.rsp, 4), r("esp",    st.s32, rc.rsp, 4), r("sp",     st.s16, rc.rsp, 4), r("spl",    st.s8, rc.rsp, 4),
+    r("rbp",    st.s64, rc.rbp, 5), r("ebp",    st.s32, rc.rbp, 5), r("bp",     st.s16, rc.rbp, 5), r("bpl",    st.s8, rc.rbp, 5),
+    r("r8",     st.s64, rc.r8,  0), r("r8d",    st.s32, rc.r8,  0), r("r8w",    st.s16, rc.r8,  0), r("r8b",    st.s8, rc.r8,  0),
+    r("r9",     st.s64, rc.r9,  1), r("r9d",    st.s32, rc.r9,  1), r("r9w",    st.s16, rc.r9,  1), r("r9b",    st.s8, rc.r9,  1),
+    r("r10",    st.s64, rc.r10, 2), r("r10d",   st.s32, rc.r10, 2), r("r10w",   st.s16, rc.r10, 2), r("r10b",   st.s8, rc.r10, 2),
+    r("r11",    st.s64, rc.r11, 3), r("r11d",   st.s32, rc.r11, 3), r("r11w",   st.s16, rc.r11, 3), r("r11b",   st.s8, rc.r11, 3),
+    r("r12",    st.s64, rc.r12, 4), r("r12d",   st.s32, rc.r12, 4), r("r12w",   st.s16, rc.r12, 4), r("r12b",   st.s8, rc.r12, 4),
+    r("r13",    st.s64, rc.r13, 5), r("r13d",   st.s32, rc.r13, 5), r("r13w",   st.s16, rc.r13, 5), r("r13b",   st.s8, rc.r13, 5),
+    r("r14",    st.s64, rc.r14, 6), r("r14d",   st.s32, rc.r14, 6), r("r14w",   st.s16, rc.r14, 6), r("r14b",   st.s8, rc.r14, 6),
+    r("r15",    st.s64, rc.r15, 7), r("r15d",   st.s32, rc.r15, 7), r("r15w",   st.s16, rc.r15, 7), r("r15b",   st.s8, rc.r15, 7),
 ];
 
 struct Instruction
@@ -121,26 +121,11 @@ struct Instruction
     enum OperandType
     {
         none,
-        _infer  = -1,
-        _label  = -2,
-        _m      = -3,
-        r8      = 1 << 0,
-        r16     = 1 << 1,
-        r32     = 1 << 2,
-        r64     = 1 << 3,
-        imm8    = 1 << 4,
-        imm16   = 1 << 5,
-        imm32   = 1 << 6,
-        imm64   = 1 << 7,
-        m8      = 1 << 8,
-        m16     = 1 << 9,
-        m32     = 1 << 10,
-        m64     = 1 << 11,
-
-        rm8     = 1 << 12,
-        rm16    = 1 << 13,
-        rm32    = 1 << 14,
-        rm64    = 1 << 15,
+        label   = 1 << 0,
+        r       = 1 << 1,
+        imm     = 1 << 2,
+        mem     = 1 << 3,
+        rm      = r | mem
     }
 
     enum OperandEncoding
@@ -163,8 +148,6 @@ struct Instruction
 
     enum RegType
     {
-        none  = -1,
-        r     = -2,
         reg0 = 0,
         reg1 = 1,
         reg2 = 2,
@@ -173,37 +156,45 @@ struct Instruction
         reg5 = 5,
         reg6 = 6,
         reg7 = 7,
+        r    = -1,
     }
 
-    MneumonicHigh mneumonic;
-    string debugName;
+    enum Flags
+    {
+        none
+    }
+
+    Mneumonic mneumonic;
+    string name;
     G2Prefix p_g2;
     G3Prefix p_g3;
     G4Prefix p_g4;
     Rex rex;
     RegType reg_t;
-    ubyte op_c;
-    ubyte op_1;
-    ubyte op_2;
-    ubyte op_3;
-    OperandType o1_t;
-    OperandType o2_t;
-    OperandType o3_t;
-    OperandEncoding o1_e;
-    OperandEncoding o2_e;
-    OperandEncoding o3_e;
+    ubyte[] op;
+    OperandType[3] op_t;
+    SizeType[3] op_s;
+    OperandEncoding[3] op_e;
+    Flags flags;
+
+    string toString() const
+    {
+        return this.name;
+    }
 }
 
-alias i = Instruction;
-alias iot = Instruction.OperandType;
-alias ioe = Instruction.OperandEncoding;
-alias ireg = Instruction.RegType;
-alias rex = Instruction.Rex;
-alias mh = MneumonicHigh;
+private alias i = Instruction;
+private alias ot = i.OperandType;
+private alias oe = i.OperandEncoding;
+private alias rex = i.Rex;
+private alias reg = i.RegType;
+private alias f = i.Flags;
+private alias m = Mneumonic;
+immutable INSTRUCTIONS = [
+    i(m.add, "addrm32i32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s32, st.s32, st.init], [oe.rm_rm, oe.imm, oe.none])
+];
 
-// High as in High-level
-// Parser will deconstruct them down into more specific mneumonics.
-enum MneumonicHigh
+enum Mneumonic
 {
     FAILSAFE,
 
@@ -889,18 +880,3 @@ enum MneumonicHigh
     xsetbv,
     xtest
 }
-
-immutable INSTRUCTIONS = [
-    // KEEP INSTRUCTIONS WITH THE SAME mh ADJACENT TO EACH OTHER
-    i(mh.add, "add_rm8_i8",         pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.reg0,  1, 0x00, 0x00, 0x80,   iot.rm8,    iot.imm8,     iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm16_i16",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.reg0,  1, 0x00, 0x00, 0x81,   iot.rm16,   iot.imm16,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm32_i32",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.reg0,  1, 0x00, 0x00, 0x81,   iot.rm32,   iot.imm32,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm64_i32",       pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.reg0,  1, 0x00, 0x00, 0x81,   iot.rm64,   iot.imm32,    iot.none,   ioe.rm_rm,  ioe.imm,    ioe.none),
-    i(mh.add, "add_rm8_r8",         pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x00,   iot.rm8,    iot.r8,       iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "add_rm16_r16",       pg2.none,       pg3.opSize,     pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm16,   iot.r16,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "add_rm32_r32",       pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm32,   iot.r32,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "add_rm64_r64",       pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.r,     1, 0x00, 0x00, 0x01,   iot.rm64,   iot.r64,      iot.none,   ioe.rm_rm,  ioe.rm_reg, ioe.none),
-    i(mh.add, "call_rm64",          pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.reg2,  1, 0x00, 0x00, 0xFF,   iot.rm64,   iot.none,     iot.none,   ioe.rm_rm,  ioe.none,   ioe.none),
-    i(mh.lea, "lea_r64_m64",        pg2.none,       pg3.none,       pg4.none,   rex.w,      ireg.r,     1, 0x00, 0x00, 0x8D,   iot.r64,    iot.m64,      iot.none,   ioe.rm_reg, ioe.rm_rm,  ioe.none),
-    i(mh.ret, "retn",               pg2.none,       pg3.none,       pg4.none,   rex.none,   ireg.none,  1, 0x00, 0x00, 0xC3,   iot.none,   iot.none,     iot.none,   ioe.none,   ioe.none,   ioe.none),
-];  

@@ -3,12 +3,6 @@ module jupiter.assembler.lexer;
 import std;
 import jupiter.assembler;
 
-struct TextRange
-{
-    size_t start;
-    size_t end;
-}
-
 /++
 Tokens:
     Token[]
@@ -61,8 +55,8 @@ NumPrefix:
     0b
 
 NumSuffix:
-    i[0-9]+
-    u[0-9]+
+    [0-9]+i
+    [0-9]+u
 
 String:
     ".+"
@@ -81,6 +75,16 @@ LSquare:
 RSquare:
     ]
 ++/
+
+struct TextRange
+{
+    string file;
+    size_t fileStart;
+
+    string input;
+    size_t start;
+    size_t end;
+}
 
 struct Token
 {
@@ -101,28 +105,86 @@ struct Token
         comma,
         lsquare,
         rsquare,
+        lcurly,
+        rcurly,
+        plus,
+        minus,
+        star,
+        fslash,
         junk,
         eof,
     }
 
     Type type;
-    string slice;
     TextRange range;
+
+    string slice() const
+    {
+        return this.range.input[this.range.start..this.range.end];
+    }
+
+    string toString() const
+    {
+        Appender!(char[]) output;
+        size_t lines  = 1;
+        size_t column = 1;
+        size_t lastLineStart = this.range.fileStart;
+        size_t lineEnd;
+        foreach(i, ch; this.range.input[this.range.fileStart..this.range.end])
+        {
+            column++;
+            if(ch == '\n')
+            {
+                lastLineStart = this.range.fileStart + i + 1;
+                lines++;
+                column = 1;
+            }
+        }
+        foreach(i, ch; this.range.input[this.range.end..$])
+        {
+            if(ch == '\n')
+            {
+                lineEnd = this.range.end + i;
+                break;
+            }
+        }
+        if(lineEnd == 0)
+            lineEnd = this.range.end;
+
+        output.put("[%s token in %s at line %s column %s]\n".format(this.type, this.range.file, lines, column));
+        output.put("\t> ");
+        output.put(this.range.input[lastLineStart..this.range.end]);
+        output.put(this.range.input[this.range.end..lineEnd]);
+        output.put("\n\t> ");
+
+        if(lastLineStart < this.range.start && this.range.end >= this.range.start)
+        {
+            foreach(i; lastLineStart..this.range.start)
+                output.put(' ');
+            output.put('^'.repeat.take(this.range.end-this.range.start).array);
+        }
+
+        return output.data.assumeUnique;
+    }
 }
 
 struct Lexer
 {
     private
     {
-        string _input;
-        size_t _cursor;
-        Token _front;
-        bool _empty;
+        string  _input;
+        size_t  _cursor;
+        Token   _front;
+        bool    _empty;
+        string  _file;
+        size_t  _fileStart;
     }
 
-    this(string input)
+    this(string input, string fileName)
     {
         this._input = input;
+        this._file = fileName;
+        this._fileStart = 0;
         this.popFront();
     }
 
@@ -150,10 +212,27 @@ struct Lexer
         }
 
         const ch = this.peek();
+
+        if(ch == '#' && (this._front.type == Token.Type.newline || this._front == Token.init))
+        {
+            const start = ++this._cursor;
+            while(this._cursor < this._input.length && this.peek() != '\n')
+                this._cursor++;
+                
+            auto end = this._cursor;
+            if(this._input[end-1] == '\r')
+                end--;
+
+            this._file = this._input[start..end];
+            this._fileStart = this._cursor;
+
+            this.popFront();
+            return;
+        }
         
         if(ch == '\n')
         {
-            this._front = Token(Token.Type.newline, "\n", TextRange(this._cursor, ++this._cursor));
+            this._front = Token(Token.Type.newline, TextRange(this._file, this._fileStart, this._input, this._cursor, ++this._cursor));
             return;
         }
         else if(ch.isStringChar)
@@ -168,7 +247,7 @@ struct Lexer
             }
 
             const end = this._cursor++;
-            this._front = Token(Token.Type.str, this._input[start..end], TextRange(start, end));
+            this._front = Token(Token.Type.str, TextRange(this._file, this._fileStart, this._input, start, end));
             return;
         }
         else if(ch.isNumberChar)
@@ -185,7 +264,7 @@ struct Lexer
 
             EndNumber:
             const end = this._cursor;
-            this._front = Token(Token.Type.number, this._input[start..end], TextRange(start, end));
+            this._front = Token(Token.Type.number, TextRange(this._file, this._fileStart, this._input, start, end));
             return;
         }
         else if(ch.isIdentStart)
@@ -204,7 +283,7 @@ struct Lexer
                 type = Token.Type.label;
             }
 
-            this._front = Token(type, this._input[start..end], TextRange(start, end));
+            this._front = Token(type, TextRange(this._file, this._fileStart, this._input, start, end));
             if(type == Token.Type.identifier)
             {
                 if(this._front.slice in g_highMneumonics)
@@ -223,7 +302,7 @@ struct Lexer
                 }
             }
             else if(type == Token.Type.label)
-                this._front.slice = this._front.slice[0..$-1]; // Remove ':'
+                this._front.range.end--; // Remove ':'
             return;
         }
         else if(ch == ' ')
@@ -232,38 +311,74 @@ struct Lexer
             while(!this.eof && this.peek() == ' ')
                 this._cursor++;
             const end = this._cursor;
-            this._front = Token(Token.Type.whitespace, this._input[start..end], TextRange(start, end));
+            this._front = Token(Token.Type.whitespace, TextRange(this._file, this._fileStart, this._input, start, end));
             return;
         }
         else if(ch == ',') // DRY, what's that??
         {
-            const start = this._cursor;
-            while(!this.eof && this.peek() == ',')
-                this._cursor++;
+            const start = this._cursor++;
             const end = this._cursor;
-            this._front = Token(Token.Type.comma, this._input[start..end], TextRange(start, end));
+            this._front = Token(Token.Type.comma, TextRange(this._file, this._fileStart, this._input, start, end));
             return;
         }
         else if(ch == '[')
         {
-            const start = this._cursor;
-            while(!this.eof && this.peek() == '[')
-                this._cursor++;
+            const start = this._cursor++;
             const end = this._cursor;
-            this._front = Token(Token.Type.lsquare, this._input[start..end], TextRange(start, end));
+            this._front = Token(Token.Type.lsquare, TextRange(this._file, this._fileStart, this._input, start, end));
             return;
         }
         else if(ch == ']')
         {
-            const start = this._cursor;
-            while(!this.eof && this.peek() == ']')
-                this._cursor++;
+            const start = this._cursor++;
             const end = this._cursor;
-            this._front = Token(Token.Type.rsquare, this._input[start..end], TextRange(start, end));
+            this._front = Token(Token.Type.rsquare, TextRange(this._file, this._fileStart, this._input, start, end));
+            return;
+        }
+        else if(ch == '(')
+        {
+            const start = this._cursor++;
+            const end = this._cursor;
+            this._front = Token(Token.Type.lcurly, TextRange(this._file, this._fileStart, this._input, start, end));
+            return;
+        }
+        else if(ch == ')')
+        {
+            const start = this._cursor++;
+            const end = this._cursor;
+            this._front = Token(Token.Type.rcurly, TextRange(this._file, this._fileStart, this._input, start, end));
+            return;
+        }
+        else if(ch == '+')
+        {
+            const start = this._cursor++;
+            const end = this._cursor;
+            this._front = Token(Token.Type.plus, TextRange(this._file, this._fileStart, this._input, start, end));
+            return;
+        }
+        else if(ch == '-')
+        {
+            const start = this._cursor++;
+            const end = this._cursor;
+            this._front = Token(Token.Type.minus, TextRange(this._file, this._fileStart, this._input, start, end));
+            return;
+        }
+        else if(ch == '*')
+        {
+            const start = this._cursor++;
+            const end = this._cursor;
+            this._front = Token(Token.Type.star, TextRange(this._file, this._fileStart, this._input, start, end));
+            return;
+        }
+        else if(ch == '/')
+        {
+            const start = this._cursor++;
+            const end = this._cursor;
+            this._front = Token(Token.Type.fslash, TextRange(this._file, this._fileStart, this._input, start, end));
             return;
         }
         else
-            this._front = Token(Token.Type.junk, this._input[this._cursor..this._cursor+1], TextRange(this._cursor, ++this._cursor));
+            this._front = Token(Token.Type.junk, TextRange(this._file, this._fileStart, this._input, this._cursor, ++this._cursor));
     }
 
     private char peek()

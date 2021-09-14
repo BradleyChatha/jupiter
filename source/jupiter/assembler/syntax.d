@@ -1,404 +1,385 @@
 module jupiter.assembler.syntax;
 
 import std, jupiter.assembler;
-import std.sumtype : This, match;
 
-alias AstNode = SumType!(
-    ParentLabelNode,
-    ChildLabelNode,
-    DirectiveNode,
-    OpcodeNode
-);
-
-struct ParentLabelNode
+private mixin template Common()
 {
-    Token tok;
-    string name;
-    AstNode*[] childLabels;
+    Token token;
 }
 
-struct ChildLabelNode
+struct LabelNode
 {
-    Token tok;
-    string name;
+    mixin Common;
 }
-
+struct OpNode
+{
+    mixin Common;
+    Mneumonic mneumonic;
+    SizeType size = SizeType.infer;
+    Expression*[] args;
+}
 struct DirectiveNode
 {
-    Token tok;
-    string name;
-    Expression[] params;
+    mixin Common;
+    Expression*[] args;
 }
+alias Node = SumType!(LabelNode, OpNode, DirectiveNode);
 
-struct OpcodeNode
+struct StringValue
 {
-    Token tok;
-    MneumonicHigh mneumonic;
-    Prefix prefix;
-    SizeType type;
-    Expression[] params;
+    mixin Common;
 }
-
-alias Expression = SumType!(
-    StringExpression,
-    NumberExpression,
-    RegisterExpression,
-    IdentifierExpression,
-    IndirectExpression
-);
-
-enum ExpressionSize = 80;
-static assert(ExpressionSize == Expression.sizeof);
-
-struct CompoundExpression
+struct LabelValue
 {
-    enum Type
-    {
-        constant
-    }
-
-    // Have to avoid forward references.
-    // Imagine if D would grow some balls and put this shit into the language itself
-    // instead of bending over to template satan itself.
-    ubyte[ExpressionSize] _1;
-    ubyte[ExpressionSize] _2;
-
-    @property @trusted nothrow pure:
-
-    ref Expression left() return
-    {
-        return *(cast(Expression*)(cast(void*)_1.ptr));
-    }
-
-    ref Expression right() return
-    {
-        return *(cast(Expression*)(cast(void*)_2.ptr));
-    }
+    mixin Common;
 }
-
-struct StringExpression
+struct NumberValue
 {
-    Token tok;
-    string str;
+    mixin Common;
 }
-
-struct NumberExpression
+struct RegisterValue
 {
-    Token tok;
-    SizeType type;
-    union
-    {
-        long asInt;
-    }
-}
-
-struct RegisterExpression
-{
-    Token tok;
+    mixin Common;
     Register reg;
 }
-
-struct IdentifierExpression
-{
-    Token tok;
-    string ident;
-}
-
 struct IndirectExpression
 {
-    Expression[] targets; // Stored as arrays otherwise forward-reference-chan will come eat me.
-    CompoundExpression[] disps;
-    CompoundExpression[] scales;
-    Expression[] indexs;
+    mixin Common;
+    Expression* exp;
+}
+alias Value = SumType!(StringValue, LabelValue, NumberValue, RegisterValue, IndirectExpression);
 
-    @property @safe nothrow pure:
-
-    ref Expression target()
+struct Expression
+{
+    enum Kind
     {
-        if(!this.targets.length)
-            this.targets.length = 1;
-        return this.targets[0];
+        FAILSAFE,
+        add,
+        sub,
+        mul,
+        div,
+        mod,
+        value
     }
 
-    ref CompoundExpression disp()
+    Kind kind;
+    Token token;
+    union
     {
-        if(!this.disps.length)
-            this.disps.length = 1;
-        return this.disps[0];
+        struct {
+            Expression* left;
+            Expression* right;
+        }
+
+        Value value;
     }
 
-    ref CompoundExpression scale()
+    this(Kind kind, Expression* left, Expression* right)
     {
-        if(!this.scales.length)
-            this.scales.length = 1;
-        return this.scales[0];
+        this.kind = kind;
+        this.left = left;
+        this.right = right;
     }
 
-    ref Expression index()
+    this(Value value)
     {
-        if(!this.indexs.length)
-            this.indexs.length = 1;
-        return this.indexs[0];
+        this.kind = Kind.value;
+        this.value = value;
+    }
+
+    void eachValue(scope void delegate(const Value) handler) const
+    {
+        if(this.kind == Kind.value)
+            handler(this.value);
+        else
+        {
+            if(this.left) this.left.eachValue(handler);
+            if(this.right) this.right.eachValue(handler);
+        }
+    }
+
+    void eachExpression(scope void delegate(const(Expression)*) handler) const
+    {
+        if(this.kind == Kind.value)
+            return;
+        handler(&this);
+        if(this.left)
+            this.left.eachExpression(handler);
+        if(this.right)
+            this.right.eachExpression(handler);
     }
 }
 
-/*
-TopLevelNode:
-    Label
-    Directive
-    Opcode
-
-Label:
-    Token.Label Token.Space?-> (NewLine|Opcode|Directive) // Case Opcode & Directive: don't consume token
-
-Directive:
-    Token.Directive Token.Space?-> (Expression Comma?)*
-
-Opcode:
-    Token.Mneumonic Token.Space Token.Prefix? Token.Space (Expression Comma?)* NewLine
-
-Expression:
-    StringExpression 
-    NumberExpression
-    RegisterExpression
-    IdentifierExpression
-    IndirectExpression
-
-StringExpression:
-    Token.String
-
-NumberExpression:
-    Token.Number
-
-RegisterExpression:
-    Token.Register
-
-IdentifierExpression:
-    Token.Identifier
-
-IndirectExpression:
-    [Expression]
-    [Expression + Expression]
-    [Expression + Expression * Expression]
-    // Constant folding is not accounted for in the grammar. Non-identifier and non-register expressions can be of the form (1 + 38 * 3124 / 1239) etc, but then constant folded.
-*/
-struct Parser
+Node[] syntax1(string input, string fileName)
 {
-    private
-    {
-        AstNode*[] _root;
-        AstNode* _parentLabel;
-    }
+    Node[] nodes;
+    auto lexer = Lexer(input, fileName);
 
-    this(Lexer lexer)
+    while(lexer.front.type != Token.Type.eof)
     {
-        this.parse(lexer);
-    }
-
-    @property @safe @nogc
-    inout(AstNode*[]) root() nothrow pure inout
-    {
-        return this._root;
-    }
-
-    private void parse(Lexer lexer)
-    {
-
-        While: while(!lexer.empty)
+        final switch(lexer.front.type) with(Token.Type)
         {
-            AstNode* toAdd;
-            switch(lexer.front.type) with(Token.Type)
-            {
-                case directive:
-                    auto node = DirectiveNode(lexer.front, lexer.front.slice[1..$]);
-                    this.ensureWhitespace(lexer, "following directive.");
-                    node.params = this.parseExpressionList(lexer, "for directive.");
-                    toAdd = new AstNode(node);
-                    break;
+            case FAILSAFE:  assert(false, "Hit a failsafe");    
+            
+            case whitespace:
+            case eof:       
+            case newline: 
+                lexer.popFront(); 
+                break;
 
-                case label:
-                    if(lexer.front.slice[0] == '.')
-                    {
-                        enforce(this._parentLabel, 
-                            formatTokenLocation(lexer.front)
-                            ~"Unexpected child label that is not under a parent label. Labels starting with a '.' can only be children."
-                        );
-                        toAdd = new AstNode(ChildLabelNode(lexer.front, lexer.front.slice));
-                        match!(
-                            (ref ParentLabelNode l)
-                            {
-                                l.childLabels ~= toAdd;
-                            },
-                            (_) { assert(false); }
-                        )(*this._parentLabel);
-                    }
-                    else
-                    {
-                        toAdd = new AstNode(ParentLabelNode(lexer.front, lexer.front.slice));
-                        this._parentLabel = toAdd;
-                    }
-                    lexer.popFront();
-                    break;
+            case label: nodes ~= Node(LabelNode(lexer.front)); lexer.popFront(); break;
+            case directive:
+                const nameToken = lexer.front;
+                lexer.popFront();
+                nodes ~= Node(DirectiveNode(nameToken, nextExpressionList(lexer)));
+                break;
+            case mneumonic: 
+                auto nameToken = lexer.front;
+                lexer.popFront();
+                auto args = nextExpressionList(lexer);
+                auto node = OpNode(nameToken, g_highMneumonics[nameToken.slice]);
 
-                case mneumonic:
-                    auto node = OpcodeNode(lexer.front, g_highMneumonics[lexer.front.slice]);
-                    const wasNewLine = this.ensureWhitespace(lexer, "following mneumonic while looking for prefix, new line, EOF, or first operand.");
-                    if(wasNewLine)
-                    {
-                        toAdd = new AstNode(node);
+                size_t prefixI;
+                bool loop = true;
+                for(; prefixI < args.length && loop; prefixI++)
+                {
+                    const arg = args[prefixI];
+                    if(arg.kind != Expression.Kind.value)
                         break;
-                    }
-                    if(lexer.front.type == prefix)
-                    {
-                        node.prefix = lexer.front.slice.to!Prefix;
-                        this.ensureWhitespace(lexer, "for mneumonic prefix "~node.prefix.to!string);
-                    }
-                    if(lexer.front.type == sizeType)
-                    {
-                        node.type = g_sizeTypes[lexer.front.slice];
-                        this.ensureWhitespace(lexer, "for mneumonic size type "~node.type.to!string);
-                    }
-                    node.params = this.parseExpressionList(lexer, "for mneumonic "~node.mneumonic.to!string, node.type);
-                    toAdd = new AstNode(node);
-                    break;
-
-                case newline:
-                case whitespace:
-                    lexer.popFront(); // Not all things care about whitespace suffixes, so this simply catches that.
-                    continue While;
-                    
-                case eof:
-                    lexer.popFront(); // Make the range empty.
-                    continue While;
-
-                default: throw new Exception("TODO: "~lexer.front.to!string);
-            }
-
-            assert(toAdd);
-            this._root ~= toAdd;
+                    arg.value.match!(
+                        (LabelValue v){
+                            if(v.token.slice in g_sizeTypes)
+                                node.size = g_sizeTypes[v.token.slice];
+                            else
+                            {
+                                prefixI--;
+                                loop = false;
+                            }
+                        },
+                        (_){ loop = false; prefixI--; }
+                    );
+                }
+                node.args = args[prefixI..$];
+                nodes ~= Node(node);
+                break;
+            
+            case lcurly:
+            case rcurly:
+            case plus:
+            case minus:
+            case star:
+            case fslash:
+            case number:    
+            case identifier:
+            case str:       
+            case register:  
+            case prefix:    
+            case sizeType:  
+            case comma:     
+            case lsquare:   
+            case rsquare:   
+            case junk:      
+                throw new Exception(format!"Unexpected token. Expecting directive, mneumonic, or label definition.\n%s"(
+                    lexer.front
+                ));
         }
     }
 
-    private Expression[] parseExpressionList(ref Lexer lexer, string ctxMsg, SizeType size = SizeType.infer)
+    return nodes;
+}
+
+string expectLabel(const Expression* exp)
+{
+    string ret;
+    enforce(exp.kind == Expression.Kind.value, "Expected a label value, not a complex expression.");
+    exp.value.match!(
+        (const LabelValue v) { ret = v.token.slice; },
+        (_) { throw new Exception("Expected a label value, not %s.\n%s".format(typeof(_).stringof, _.token)); }
+    );
+
+    return ret;
+}
+
+private:
+
+Expression* nextExpression(ref Lexer lexer)
+{
+    if(lexer.front.type == Token.Type.lsquare)
     {
-        Expression[] ret;
-        while(lexer.front.type != Token.Type.newline && lexer.front.type != Token.Type.eof)
+        lexer.popFront();
+        auto exp = nextExpression(lexer);
+        enforce(lexer.front.type == Token.Type.rsquare, "Expected ']' to close indirect expression.\n%s".format(lexer.front));
+        lexer.popFront();
+        return new Expression(Value(IndirectExpression(lexer.front, exp)));
+    }
+
+    struct Op
+    {
+        size_t precedence;
+        Token token;
+    }
+
+    Token[] values;
+    Op[] operators;
+
+    while(true) with(Token.Type)
+    {
+        if(lexer.empty)
+            break;
+
+        const t = lexer.front.type;
+        size_t precedence;
+        if(t == plus)
+            precedence = 12;
+        else if(t == star)
+            precedence = 13;
+        else if(t == minus)
+            precedence = 11;
+        else if(t == fslash)
+            precedence = 14;
+        else if(t == lcurly || t == rcurly)
+            precedence = 10;
+        else if(t == str || t == identifier || t == number || t == register)
         {
-            while(lexer.front.type == Token.Type.whitespace)
-                lexer.popFront();
-            ret ~= this.parseExpression(lexer, ctxMsg, size);
-            lexer.popFront();
-            while(lexer.front.type == Token.Type.whitespace)
-                lexer.popFront();
-            if(lexer.front.type == Token.Type.newline || lexer.front.type == Token.Type.eof)
+            values ~= lexer.front;
+        }
+        else if(t != whitespace)
+            break;
+        
+        if(precedence != 0)
+        {
+            if(t == rcurly)
             {
-                lexer.popFront();
-                break;
+                while(true)
+                {
+                    if(!operators.length)
+                        throw new Exception("Unmatched ')' when parsing complex expression.%s".format(lexer.front));
+
+                    const op = operators[$-1];
+                    operators.length--;
+                    if(op.token.type == lcurly)
+                        break;
+                }
             }
-            else if(lexer.front.type == Token.Type.comma)
-                lexer.popFront();
             else
             {
-                throw new Exception("%sUnexpected token %s when parsing expression list %s - expected comma, new line, or EOF.".format(
-                    formatTokenLocation(lexer.front),
-                    lexer.front,
-                    ctxMsg
-                ));
+                while(operators.length && operators[$-1].precedence > precedence)
+                {
+                    values ~= operators[$-1].token;
+                    operators.length--;
+                }
+                operators ~= Op(precedence, lexer.front);
             }
         }
+        lexer.popFront();
+    }
+    foreach(op; operators.retro)
+        values ~= op.token;
 
-        return ret;
+    if(values.length == 1 && operators.length == 0)
+    {
+        switch(values[0].type) with(Token.Type)
+        {
+            case str:
+                return new Expression(Value(StringValue(values[0])));
+            case identifier:
+                return new Expression(Value(LabelValue(values[0])));
+            case number:
+                return new Expression(Value(NumberValue(values[0])));
+            case register:
+                return new Expression(Value(RegisterValue(values[0], g_registers[values[0].slice])));
+
+            default: throw new Exception(format!"Cannot form token into an expression.\n%s"(values[0]));
+        }
     }
 
-    private Expression parseExpression(ref Lexer lexer, string ctxMsg, SizeType size)
+    Expression*[] valueStack;
+    foreach(v; values)
     {
-        Expression ret;
+        switch(v.type) with(Token.Type)
+        {
+            case str:
+                valueStack ~= new Expression(Value(StringValue(v)));
+                break;
+            case identifier:
+                valueStack ~= new Expression(Value(LabelValue(v)));
+                break;
+            case number:
+                valueStack ~= new Expression(Value(NumberValue(v)));
+                break;
+            case register:
+                valueStack ~= new Expression(Value(RegisterValue(v, g_registers[v.slice])));
+                break;
+
+            case plus:
+            case minus:
+            case star:
+            case fslash:
+                enforce(valueStack.length >= 2, "Unbalanced expression, more operators than there are values. %s".format(v));
+                auto left = valueStack[$-2];
+                auto right = valueStack[$-1];
+                valueStack.length -= 2;
+                valueStack ~= new Expression(
+                    v.type == plus
+                    ? Expression.Kind.add
+                        : v.type == minus
+                        ? Expression.Kind.sub
+                            : v.type == star
+                            ? Expression.Kind.mul
+                                : Expression.Kind.div, 
+                    left, 
+                    right
+                );
+                break;
+
+            default: assert(false);
+        }
+    }
+    enforce(valueStack.length == 1, "Expected one value left on evaluation stack.%s".format(lexer.front));
+    return valueStack[0];
+}
+
+Expression*[] nextExpressionList(ref Lexer lexer)
+{
+    Expression*[] ret;
+
+    while(!lexer.empty)
+    {
         switch(lexer.front.type) with(Token.Type)
         {
-            case identifier: ret = Expression(IdentifierExpression(lexer.front, lexer.front.slice)); break;
-            case str: ret = Expression(StringExpression(lexer.front, lexer.front.slice)); break;
-            case register: ret = Expression(RegisterExpression(lexer.front, g_registers[lexer.front.slice])); break;
-
-            case number:
-                bool isInt = true; // TODO
-                if(isInt)
-                {
-                    const value = this.parseInt(lexer.front.slice);
-                    ret = Expression(NumberExpression(lexer.front, size, value));
-                }
-                else assert(false, "TODO");
+            case whitespace:
+                lexer.popFront();
                 break;
 
             case lsquare:
-                auto exp = IndirectExpression();
-                lexer.popFront();
-                if(lexer.front.type == Token.Type.whitespace) 
-                    lexer.popFront();
+            case register:
+            case number:
+            case identifier:
+            case str:
+                ret ~= nextExpression(lexer);
 
-                switch(lexer.front.type)
+                while(lexer.front.type == whitespace)
+                    lexer.popFront();
+                if(lexer.front.type != comma && lexer.front.type != newline)
                 {
-                    case identifier:
-                    case register:
-                        exp.targets ~= this.parseExpression(lexer, ctxMsg, size);
-                        break;
-                        
-                    default: throw new Exception("%sToken %s is an invalid target for dereference.".format(
-                        formatTokenLocation(lexer.front),
+                    throw new Exception("Expected comma or end of line following expression in expression list. %s".format(
                         lexer.front
                     ));
                 }
-
-                auto copy = lexer;
-                copy.popFront();
-                if(copy.front.type == rsquare)
-                {
-                    lexer = copy;
-                    ret = exp;
-                    break;
-                }
-
-                // TODO, DISP AND SCALE
-
-                ret = exp;
+                if(lexer.front.type != newline)
+                    lexer.popFront();
                 break;
 
-            default: throw new Exception(
-                "%sUnexpected token %s when parsing expression list %s".format(
-                    formatTokenLocation(lexer.front),
-                    lexer.front,
-                    ctxMsg
-                )
-            );
+            case eof:
+            case newline:
+                lexer.popFront();
+                return ret;
+
+            default: throw new Exception("Unexpected token while parsing expression list.\n%s".format(
+                lexer.front
+            ));
         }
-        return ret;
     }
 
-    private bool ensureWhitespace(ref Lexer lexer, string addMsg)
-    {
-        lexer.popFront();
-        if(lexer.front.type == Token.Type.newline || lexer.front.type == Token.Type.eof)
-            return true;
-        enforce(
-            lexer.front.type == Token.Type.whitespace
-         || lexer.front.type == Token.Type.newline, 
-            formatTokenLocation(lexer.front)~"Expected either a space or a new line "~addMsg~" - but got "~lexer.front.to!string
-        );
-        lexer.popFront();
-        return false;
-    }
-
-    private long parseInt(string text)
-    {
-        if(text.startsWith("0x"))
-            return text[2..$].to!long(16);
-        else if(text.startsWith("0b"))
-            return text[2..$].to!long(2);
-        else
-            return text.to!long();
-    }
-}
-
-string formatTokenLocation(Token tok)
-{
-    return "[line %s col %s] ".format(tok.range.start, tok.range.end); // TODO: Turn this into line + col.
+    return ret;
 }
