@@ -1,1 +1,1 @@
-dub test; ndisasm.exe raw.bin -b 64
+dub test; ndisasm raw.bin -b 64

@@ -360,9 +360,9 @@ Expression*[] nextExpressionList(ref Lexer lexer)
 
                 while(lexer.front.type == whitespace)
                     lexer.popFront();
-                if(lexer.front.type != comma && lexer.front.type != newline)
+                if(lexer.front.type != comma && lexer.front.type != newline && lexer.front.type != eof)
                 {
-                    throw new Exception("Expected comma or end of line following expression in expression list. %s".format(
+                    throw new Exception("Expected comma or end of line/file following expression in expression list. %s".format(
                         lexer.front
                     ));
                 }

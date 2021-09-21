@@ -149,6 +149,11 @@ void emitOp(ref EmitResult res, const OpIr op)
             modrm |= 0b00_000_100; // SIB
             sib |= exp.base.regNum;
             sib |= exp.index.regNum << 3;
+
+            if(exp.index.cat >= Register.Category.r8)
+                rex |= Instruction.Rex.x;
+            if(exp.base.cat >= Register.Category.r8)
+                rex |= Instruction.Rex.b;
         }
 
         void addDisp(AddressingExpression exp)
@@ -233,6 +238,8 @@ void emitOp(ref EmitResult res, const OpIr op)
                             )
                         );
                         modrm |= exp.base.regNum;
+                        if(exp.base.cat >= exp.base.Category.r8)
+                            rex |= Instruction.Rex.b;
                         break;
 
                     case direct: assert(false, "TODO");
@@ -277,7 +284,10 @@ void emitOp(ref EmitResult res, const OpIr op)
                 break;
 
             case rm_reg:
-                modrm |= getRegValue(op.arg[i]).regNum << 3;
+                const reg = getRegValue(op.arg[i]);
+                modrm |= reg.regNum << 3;
+                if(reg.cat >= Register.Category.r8)
+                    rex |= Instruction.Rex.r;
                 break;
         }
     }
@@ -285,7 +295,10 @@ void emitOp(ref EmitResult res, const OpIr op)
     // output bytes
     bytes.put(prefixes[0..prefixCount]);
     if(rex != Instruction.Rex.none)
+    {
+        rex |= 0b0100_0000;
         bytes.put(cast(ubyte)rex);
+    }
     bytes.put(op.inst.op);
     if(modrm != 0 || hasModrm)
         bytes.put(modrm);

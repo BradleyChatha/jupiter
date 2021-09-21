@@ -1,0 +1,5 @@
+addrm32i32 "add [rcx], 1"               81 01 01 00 00 00
+addrm32i32 "add [rcx + rdx], 2"         81 04 11 02 00 00 00
+addrm32i32 "add [rcx + rdx * 8], 3"     81 04 D1 03 00 00 00
+addrm32i32 "add [rcx + rdx + 8], 4"     81 44 11 08 04 00 00 00
+addrm32i32 "add [rdx * 2 + 2], 5"       81 04 55 02 00 00 00 05 00 00 00
