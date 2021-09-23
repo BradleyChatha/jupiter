@@ -99,11 +99,19 @@ void astToIr(ref IrResult ret, const Node node)
                     inferredInfo[1].type,
                     inferredInfo[2].type,
                 ];
-                const SizeType[3] sizes = [
+                SizeType[3] sizes = [
                     inferredInfo[0].size,
                     inferredInfo[1].size,
                     inferredInfo[2].size,
                 ];
+
+                // Edge case: When the user explicitly says the size type, we don't
+                //            want the "none" operands to also infer this type.
+                foreach(i, ref s; sizes)
+                {
+                    if(types[i] == Instruction.OperandType.none)
+                        s = SizeType.infer;
+                }
 
                 if(inst.op_s == sizes && inst.op_t[].equal!"(a & b) > 0 || a == b"(types[]))
                 {
@@ -207,14 +215,10 @@ ArgInfo[3] getArgInfo(const OpNode n)
         );
     }
 
-    if(n.size != SizeType.infer)
-    {
-        foreach(ref v; ret)
-        {
-            if(v.size == SizeType.infer)
-                v.size = n.size;
-        }
-    }
+    if(n.opSize != SizeType.infer)
+        ret[1].size = n.opSize;
+    if(n.addrSize != SizeType.infer)
+        ret[0].size = n.addrSize;
 
     return ret;
 }

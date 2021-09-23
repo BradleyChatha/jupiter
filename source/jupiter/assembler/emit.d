@@ -44,17 +44,18 @@ struct EmitResult
         size_t offsetInSection;
     }
 
-    static struct LabelDependency
+    static struct ExpressionDep
     {
         Instruction inst;
         const(Expression)* exp;
         string section;
         size_t offsetInSection;
+        size_t byteCount;
     }
 
     Appender!(ubyte[])[string] bytesBySection;
     LabelDef[string] labelDefs;
-    LabelDependency[] labelDeps;
+    ExpressionDep[] expressions;
     string currSection;
     IrResult irResult;
 
@@ -79,15 +80,6 @@ EmitResult emit(const IrResult res)
     }
 
     return ret;
-}
-
-unittest
-{
-    const file  = "views/test/test.asm";
-    const nodes = syntax1(preprocess(file), file);
-    const irres = ir(nodes);
-    auto emitted = emit(irres);
-    std.file.write("raw.bin", emitted.getSectionBytes().data);
 }
 
 private:
@@ -125,7 +117,8 @@ void emitOp(ref EmitResult res, const OpIr op)
     long                    disp;
     long                    imm_v;
     size_t                  dispBytes, immBytes;
-    bool                    hasModrm, hasDisp, hasImm, dispNeedsLabel, immNeedsLabel;
+    const(Expression)*      dispExp, immExp;
+    bool                    hasModrm, hasDisp, hasImm;
 
     scope bytes = &res.getSectionBytes();
 
@@ -133,6 +126,13 @@ void emitOp(ref EmitResult res, const OpIr op)
     rex = op.inst.rex;
     if(op.inst.reg_t != Instruction.RegType.r)
         modrm |= (cast(ubyte)op.inst.reg_t << 3);
+
+    if(op.inst.p_g2 != G2Prefix.none)
+        prefixes[prefixCount++] = cast(ubyte)op.inst.p_g2;
+    if(op.inst.p_g3 != G3Prefix.none)
+        prefixes[prefixCount++] = cast(ubyte)op.inst.p_g3;
+    if(op.inst.p_g4 != G4Prefix.none)
+        prefixes[prefixCount++] = cast(ubyte)op.inst.p_g4;
 
     // Figure out modrm and SIB, and disp... and imm
     foreach(i, encoding; op.inst.op_e) with(Instruction.OperandEncoding)
@@ -159,27 +159,13 @@ void emitOp(ref EmitResult res, const OpIr op)
         void addDisp(AddressingExpression exp)
         {
             hasDisp = true;
-            disp = solve(exp.disp, dispNeedsLabel);
-            if(dispNeedsLabel)
-            {
-                disp = 0;
-                dispBytes = 4;
-                return;
-            }
+            dispExp = exp.disp;
 
             if(exp.base.size == SizeType.s32)
                 prefixes[prefixCount++] = cast(ubyte)G4Prefix.addrSize;
 
-            if(disp <= ubyte.max)
-            {
-                modrm |= 0b01_000_000; // [reg] + disp8
-                dispBytes = 1;
-            }
-            else
-            {
-                modrm |= 0b10_000_000; // [reg] + disp32
-                dispBytes = 4;
-            }
+            modrm |= 0b10_000_000; // [reg] + disp32
+            dispBytes = 4;
         }
 
         void addScale(AddressingExpression exp)
@@ -195,7 +181,7 @@ void emitOp(ref EmitResult res, const OpIr op)
             case none: break;
 
             case Instruction.OperandEncoding.imm:
-                imm_v = solve(op.arg[i], immNeedsLabel);
+                immExp = op.arg[i];
                 immBytes = cast(size_t)op.inst.op_s[i];
                 hasImm = true;
                 break;
@@ -242,7 +228,14 @@ void emitOp(ref EmitResult res, const OpIr op)
                             rex |= Instruction.Rex.b;
                         break;
 
-                    case direct: assert(false, "TODO");
+                    case direct:
+                        modrm = 0b000_000_100; // Has a SIB
+                        sib   = 0b000_100_101; // Disp as base, no index
+
+                        dispExp = exp.direct;
+                        dispBytes = 4;
+                        hasDisp = true;
+                        break;
 
                     case baseIndex:
                         addIndex(exp);
@@ -305,57 +298,29 @@ void emitOp(ref EmitResult res, const OpIr op)
     if(sib != 0)
         bytes.put(sib);
     if(hasDisp)
+    {
+        assert(dispExp);
+        res.expressions ~= EmitResult.ExpressionDep(
+            cast()op.inst,
+            dispExp,
+            res.currSection,
+            bytes.data.length,
+            dispBytes
+        );
         bytes.put(nativeToLittleEndian(disp)[0..dispBytes]);
+    }
     if(hasImm)
+    {
+        assert(immExp);
+        res.expressions ~= EmitResult.ExpressionDep(
+            cast()op.inst,
+            immExp,
+            res.currSection,
+            bytes.data.length,
+            immBytes
+        );
         bytes.put(nativeToLittleEndian(imm_v)[0..immBytes]);
-}
-
-long solve(const(Expression)* exp, ref bool requiresLabel)
-{
-    if(requiresLabel)
-        return 0;
-
-    if(exp.kind == Expression.Kind.value)
-    {
-        long ret;
-        exp.value.match!(
-            (NumberValue v) { ret = v.token.slice.to!long; },
-            (LabelValue v) { requiresLabel = true; },
-            (_) { throw new Exception("Don't know how to convert %s into a numeric value.".format(_)); }
-        );
-        return ret;
     }
-
-    switch(exp.kind) with(Expression.Kind)
-    {
-        case add:
-            return solve(exp.left, requiresLabel) + solve(exp.right, requiresLabel);
-
-        case mul:
-            return solve(exp.left, requiresLabel) * solve(exp.right, requiresLabel);
-
-        default: assert(false);
-    }
-}
-
-// NOTE: Only call just before we write the Disp bytes, not any earlier, not any sooner.
-void addLabelDeps(ref EmitResult res, const Instruction inst, const(Expression)* exp)
-{
-    exp.eachValue((v)
-    {
-        v.match!(
-            (LabelValue v)
-            {
-                res.labelDeps ~= EmitResult.LabelDependency(
-                    cast()inst,
-                    exp,
-                    res.currSection,
-                    res.getSectionBytes().data.length
-                );
-            },
-            (_){}
-        );
-    });
 }
 
 AddressingExpression decompose(IndirectExpression exp)

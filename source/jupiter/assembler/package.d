@@ -6,4 +6,6 @@ public import
     jupiter.assembler.preprocessor,
     jupiter.assembler.ir,
     jupiter.assembler.syntax,
-    jupiter.assembler.emit;
+    jupiter.assembler.emit,
+    jupiter.assembler.objbin,
+    jupiter.assembler.objhelper;

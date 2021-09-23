@@ -18,6 +18,10 @@ shared static this()
         "word":     SizeType.s16,
         "dword":    SizeType.s32,
         "qword":    SizeType.s64,
+        "byteptr":  SizeType.s8,
+        "wordptr":  SizeType.s16,
+        "dwordptr": SizeType.s32,
+        "qwordptr": SizeType.s64,
     ];
 }
 
@@ -183,15 +187,29 @@ struct Instruction
     }
 }
 
-private alias i = Instruction;
-private alias ot = i.OperandType;
-private alias oe = i.OperandEncoding;
-private alias rex = i.Rex;
-private alias reg = i.RegType;
-private alias f = i.Flags;
-private alias m = Mneumonic;
+private alias i     = Instruction;
+private alias ot    = i.OperandType;
+private alias oe    = i.OperandEncoding;
+private alias rex   = i.Rex;
+private alias reg   = i.RegType;
+private alias f     = i.Flags;
+private alias m     = Mneumonic;
 immutable INSTRUCTIONS = [
-    i(m.add, "addrm32i32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s32, st.s32, st.init], [oe.rm_rm, oe.imm, oe.none])
+    i(m.add, "addrm8i8",            pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm16i16",          pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s16, st.s16, st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm32i32",          pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s32, st.s32, st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm64i32",          pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s64, st.s32, st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm16i8",           pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s16, st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm32i8",           pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s32, st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm64i8",           pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s64, st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
+    i(m.add, "addrm8r8",            pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x00], [ot.rm, ot.r,   ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
+    i(m.add, "addrm16r16",          pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x01], [ot.rm, ot.r,   ot.none], [st.s16, st.s16, st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
+    i(m.add, "addrm32r32",          pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x01], [ot.rm, ot.r,   ot.none], [st.s32, st.s32, st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
+    i(m.add, "addrm64r64",          pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x01], [ot.rm, ot.r,   ot.none], [st.s64, st.s64, st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
+    i(m.add, "addr8rm8",            pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x02], [ot.r,  ot.rm,  ot.none], [st.s8,  st.s8,  st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
+    i(m.add, "addr16rm16",          pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x03], [ot.r,  ot.rm,  ot.none], [st.s16, st.s16, st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
+    i(m.add, "addr32rm32",          pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x03], [ot.r,  ot.rm,  ot.none], [st.s32, st.s32, st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
+    i(m.add, "addr64rm64",          pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x03], [ot.r,  ot.rm,  ot.none], [st.s64, st.s64, st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
 ];
 
 enum Mneumonic

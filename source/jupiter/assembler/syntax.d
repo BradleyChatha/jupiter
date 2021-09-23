@@ -15,7 +15,8 @@ struct OpNode
 {
     mixin Common;
     Mneumonic mneumonic;
-    SizeType size = SizeType.infer;
+    SizeType opSize = SizeType.infer;
+    SizeType addrSize = SizeType.infer;
     Expression*[] args;
 }
 struct DirectiveNode
@@ -136,30 +137,33 @@ Node[] syntax1(string input, string fileName)
             case mneumonic: 
                 auto nameToken = lexer.front;
                 lexer.popFront();
-                auto args = nextExpressionList(lexer);
-                auto node = OpNode(nameToken, g_highMneumonics[nameToken.slice]);
+                if(lexer.front.type == Token.Type.whitespace)
+                    lexer.popFront();
 
-                size_t prefixI;
-                bool loop = true;
-                for(; prefixI < args.length && loop; prefixI++)
+                auto node = OpNode();
+
+                While: while(!lexer.empty)
                 {
-                    const arg = args[prefixI];
-                    if(arg.kind != Expression.Kind.value)
-                        break;
-                    arg.value.match!(
-                        (LabelValue v){
-                            if(v.token.slice in g_sizeTypes)
-                                node.size = g_sizeTypes[v.token.slice];
+                    switch(lexer.front.type)
+                    {
+                        case sizeType:
+                            if(lexer.front.slice.endsWith("ptr"))
+                                node.addrSize = g_sizeTypes[lexer.front.slice];
                             else
-                            {
-                                prefixI--;
-                                loop = false;
-                            }
-                        },
-                        (_){ loop = false; prefixI--; }
-                    );
+                                node.opSize = g_sizeTypes[lexer.front.slice];
+                            lexer.popFront();
+                            break;
+                        case whitespace:
+                            lexer.popFront();
+                            break;
+                        default: break While;
+                    }
                 }
-                node.args = args[prefixI..$];
+
+                auto args = nextExpressionList(lexer);
+                node.token = nameToken;
+                node.mneumonic = g_highMneumonics[nameToken.slice];
+                node.args = args;
                 nodes ~= Node(node);
                 break;
             

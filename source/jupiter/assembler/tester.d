@@ -55,7 +55,7 @@ private Case[] getCases(string file)()
     immutable code = import(file);
     auto r = regex(`(.+)\s+"(.+)"\s+(.+)`); // 1 = eMneumonic | 2 = code | 3 = eBytes
 
-    foreach(line; code.lineSplitter)
+    foreach(line; code.lineSplitter.filter!(l => l.length))
     {
         const match = matchFirst(line, r);
         assert(!match.empty, "Line failed to parse: "~line);
@@ -72,9 +72,11 @@ private Case[] getCases(string file)()
 
 private void runTest(const Case c, ref Failed[] failed)
 {
+    Appender!(ubyte[]) bytes;
     auto ast     = syntax1(c.code, "test");
     auto irInf   = ir(ast);
     auto emitInf = emit(irInf);
+    emitBin(emitInf, bytes);
 
     Failed failure;
     failure.c = cast()c;
@@ -93,17 +95,16 @@ private void runTest(const Case c, ref Failed[] failed)
                 );
             }
 
-            const bytes = emitInf.bytesBySection[".text"].data;
-            if(!bytes.equal(c.eBytes))
+            if(!bytes.data.equal(c.eBytes))
             {
                 failure.errors ~= format!"Expected bytes to be:\n\t%s\nNot:\n\t%s"(
-                    c.eBytes, bytes
+                    c.eBytes, bytes.data
                 );
             }
 
             if(failure.errors.length)
             {
-                std.file.write("temp.bin", bytes);
+                std.file.write("temp.bin", bytes.data);
                 const result = executeShell("ndisasm temp.bin -b 64");
                 failure.errors ~= format!"Ndisasm reports:\n%s"(result.output);
                 failed ~= failure;
