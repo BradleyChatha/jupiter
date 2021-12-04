@@ -1,1 +1,0 @@
-dub test; ndisasm raw.bin -b 64

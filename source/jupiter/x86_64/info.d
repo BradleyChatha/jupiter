@@ -1,28 +1,17 @@
 // Mneumonics as the lexer sees them. Parser gets its own set of info for them.
-module jupiter.assembler.info;
+module jupiter.x86_64.info;
 
 import std;
 
-Mneumonic[string] g_highMneumonics;
+Mneumonic[string] g_mneumonics;
 Register[string] g_registers;
-SizeType[string] g_sizeTypes;
 
 shared static this()
 {
     static foreach(member; __traits(allMembers, Mneumonic))
-        g_highMneumonics[member] = mixin("Mneumonic."~member);
+        g_mneumonics[member] = mixin("Mneumonic."~member);
     static foreach(reg; Registers)
         g_registers[reg.name] = reg;
-    g_sizeTypes = [
-        "byte":     SizeType.s8,
-        "word":     SizeType.s16,
-        "dword":    SizeType.s32,
-        "qword":    SizeType.s64,
-        "byteptr":  SizeType.s8,
-        "wordptr":  SizeType.s16,
-        "dwordptr": SizeType.s32,
-        "qwordptr": SizeType.s64,
-    ];
 }
 
 enum SizeType
@@ -120,6 +109,14 @@ immutable Registers = [
     r("r15",    st.s64, rc.r15, 7), r("r15d",   st.s32, rc.r15, 7), r("r15w",   st.s16, rc.r15, 7), r("r15b",   st.s8, rc.r15, 7),
 ];
 
+template regi(string name)
+{
+    import std.algorithm : countUntil;
+
+    enum index = Registers.countUntil!(r => r.name == name);
+    const regi = Registers[index];
+}
+
 struct Instruction
 {
     enum OperandType
@@ -129,7 +126,7 @@ struct Instruction
         r       = 1 << 1,
         imm     = 1 << 2,
         mem     = 1 << 3,
-        rm      = r | mem
+        rm
     }
 
     enum OperandEncoding
@@ -152,6 +149,7 @@ struct Instruction
 
     enum RegType
     {
+        none = -1,
         reg0 = 0,
         reg1 = 1,
         reg2 = 2,
@@ -160,7 +158,6 @@ struct Instruction
         reg5 = 5,
         reg6 = 6,
         reg7 = 7,
-        r    = -1,
     }
 
     enum Flags
@@ -179,6 +176,7 @@ struct Instruction
     OperandType[3] op_t;
     SizeType[3] op_s;
     OperandEncoding[3] op_e;
+    Register[3] op_reg;
     Flags flags;
 
     string toString() const
@@ -190,26 +188,32 @@ struct Instruction
 private alias i     = Instruction;
 private alias ot    = i.OperandType;
 private alias oe    = i.OperandEncoding;
+private const ri    = Register.init;
 private alias rex   = i.Rex;
 private alias reg   = i.RegType;
 private alias f     = i.Flags;
 private alias m     = Mneumonic;
 immutable INSTRUCTIONS = [
-    i(m.add, "addrm8i8",            pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm16i16",          pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s16, st.s16, st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm32i32",          pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s32, st.s32, st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm64i32",          pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s64, st.s32, st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm16i8",           pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s16, st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm32i8",           pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s32, st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm64i8",           pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s64, st.s8,  st.init], [oe.rm_rm,     oe.imm,      oe.none]),
-    i(m.add, "addrm8r8",            pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x00], [ot.rm, ot.r,   ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
-    i(m.add, "addrm16r16",          pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x01], [ot.rm, ot.r,   ot.none], [st.s16, st.s16, st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
-    i(m.add, "addrm32r32",          pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x01], [ot.rm, ot.r,   ot.none], [st.s32, st.s32, st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
-    i(m.add, "addrm64r64",          pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x01], [ot.rm, ot.r,   ot.none], [st.s64, st.s64, st.init], [oe.rm_rm,     oe.rm_reg,   oe.none]),
-    i(m.add, "addr8rm8",            pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x02], [ot.r,  ot.rm,  ot.none], [st.s8,  st.s8,  st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
-    i(m.add, "addr16rm16",          pg2.none,    pg3.opSize, pg4.none,        rex.none,   reg.reg0, [0x03], [ot.r,  ot.rm,  ot.none], [st.s16, st.s16, st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
-    i(m.add, "addr32rm32",          pg2.none,    pg3.none,   pg4.none,        rex.none,   reg.reg0, [0x03], [ot.r,  ot.rm,  ot.none], [st.s32, st.s32, st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
-    i(m.add, "addr64rm64",          pg2.none,    pg3.none,   pg4.none,        rex.w,      reg.reg0, [0x03], [ot.r,  ot.rm,  ot.none], [st.s64, st.s64, st.init], [oe.rm_reg,    oe.rm_rm,   oe.none]),
+    i(m.add, "addali8", pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x04], [ot.r, ot.imm, ot.none], [st.s8,  st.s8,  st.init], [oe.none, oe.imm, oe.none], [regi!"al", ri, ri], f.none),
+    i(m.add, "addaxi16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x05], [ot.r, ot.imm, ot.none], [st.s16,  st.s16,  st.init], [oe.none, oe.imm, oe.none], [regi!"ax", ri, ri], f.none),
+    i(m.add, "addeaxi32", pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x05], [ot.r, ot.imm, ot.none], [st.s32,  st.s32,  st.init], [oe.none, oe.imm, oe.none], [regi!"eax", ri, ri], f.none),
+    i(m.add, "addraxi32", pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0x05], [ot.r, ot.imm, ot.none], [st.s64,  st.s32,  st.init], [oe.none, oe.imm, oe.none], [regi!"rax", ri, ri], f.none),
+    i(m.add, "addrm8i8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addsxrm8i8", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm16i16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s16,  st.s16,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm32i32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s32,  st.s32,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm64i32", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s64,  st.s32,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm16i8", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s16,  st.s8,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm32i8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s32,  st.s8,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm64i8", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s64,  st.s8,  st.init], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm8r8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x00], [ot.rm, ot.r, ot.none], [st.s8,  st.s8,  st.init], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm16r16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x01], [ot.rm, ot.r, ot.none], [st.s16,  st.s16,  st.init], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm32r32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x01], [ot.rm, ot.r, ot.none], [st.s32,  st.s32,  st.init], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addrm64r64", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x01], [ot.rm, ot.r, ot.none], [st.s64,  st.s64,  st.init], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addr8rm8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x02], [ot.r, ot.rm, ot.none], [st.s8,  st.s8,  st.init], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addr16rm16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x03], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.init], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addr32rm32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x03], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.init], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+    i(m.add, "addr64rm64", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x03], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.init], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
 ];
 
 enum Mneumonic
