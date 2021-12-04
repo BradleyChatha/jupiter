@@ -57,10 +57,10 @@ void main()
                     final switch(inst.op_s[i2]) with(SizeType)
                     {
                         case infer: assert(false);
-                        case s8: vars.put("    Imm8Expression"); if(!isConstParam) ctorParams.put("Imm8Expression"); break;
-                        case s16: vars.put("    Imm16Expression"); if(!isConstParam) ctorParams.put("Imm16Expression"); break;
-                        case s32: vars.put("    Imm32Expression"); if(!isConstParam) ctorParams.put("Imm32Expression"); break;
-                        case s64: vars.put("    Imm64Expression"); if(!isConstParam) ctorParams.put("Imm64Expression"); break;
+                        case s8: vars.put("    Imm8"); if(!isConstParam) ctorParams.put("Imm8"); break;
+                        case s16: vars.put("    Imm16"); if(!isConstParam) ctorParams.put("Imm16"); break;
+                        case s32: vars.put("    Imm32"); if(!isConstParam) ctorParams.put("Imm32"); break;
+                        case s64: vars.put("    Imm64"); if(!isConstParam) ctorParams.put("Imm64"); break;
                     }
                     vars.put(" "~argName(i2)~";\n");
                     if(!isConstParam) ctorParams.put(" "~argName(i2));

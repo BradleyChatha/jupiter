@@ -24,7 +24,7 @@ struct Mem
     }
 
     Mode mode;
-    IrExpression* disp;
+    long disp;
     Register base_;
     Register index;
     int scale;
@@ -32,55 +32,8 @@ struct Mem
     invariant(scale == 0 || scale == 2 || scale == 4 || scale == 8);
 }
 
-struct IrLabel
-{
-    string fqn;
-}
-
-struct IrExpression
-{
-    alias Value = SumType!(
-        long,
-        string,
-        IrLabel,
-    );
-
-    enum Op
-    {
-        constant,
-        add,
-        mul,
-        div,
-        sub
-    }
-
-    Op op;
-    union
-    {
-        struct 
-        {
-            IrExpression* left;
-            IrExpression* right;
-        }
-
-        Value constant;
-    }
-    long solvedValue;
-}
-
 alias Rm(SizeType size) = SumType!(Mem, Reg!size);
 alias Rm8 = Rm!(SizeType.s8); alias Rm16 = Rm!(SizeType.s16); alias Rm32 = Rm!(SizeType.s32); alias Rm64 = Rm!(SizeType.s64); 
-
-alias ImmExpression(T) = SumType!(IrExpression*, Imm!T);
-alias Imm8Expression = ImmExpression!byte; alias Imm16Expression = ImmExpression!short; alias Imm32Expression = ImmExpression!int; alias Imm64Expression = ImmExpression!long; 
-long solvedValue(T)(T exp)
-if(isInstanceOf!(SumType, T))
-{
-    return exp.match!(
-        (IrExpression* e) { return e.solvedValue; },
-        (v) { return v.value; }
-    );
-}
 
 alias IrValue = SumType!(
     Imm8,
@@ -128,12 +81,12 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
     {{
         const arg = argName(i);
         static if(oe == Instruction.OperandEncoding.add)
-            opAdd = mixin("ir."~arg~".solvedValue");
+            opAdd = mixin("ir."~arg~".value");
         else static if(oe == Instruction.OperandEncoding.imm)
         {
             imm.write = true;
             imm.bytes = cast(int)Ir.INSTRUCTION.op_s[i];
-            imm.value = mixin("ir."~arg~".solvedValue");
+            imm.value = mixin("ir."~arg~".value");
         }
         else static if(oe == Instruction.OperandEncoding.rm_reg)
         {
@@ -162,7 +115,7 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                             sib.value = 0b00_100_101;
                             disp.write = true;
                             disp.bytes = 4;
-                            disp.value = mem.disp.solvedValue;
+                            disp.value = mem.disp;
                             break;
                         case Mem.Mode.base_:
                             modrm.value |= 0b100;
@@ -179,7 +132,7 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                             break;
                         case Mem.Mode.baseDisp:
                             disp.write = true;
-                            disp.value = mem.disp.solvedValue;
+                            disp.value = mem.disp;
                             if(disp.value <= byte.max)
                             {
                                 modrm.value |= 0b01_000_000;
@@ -196,7 +149,7 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                             break;
                         case Mem.Mode.baseIndexDisp:
                             disp.write = true;
-                            disp.value = mem.disp.solvedValue;
+                            disp.value = mem.disp;
                             if(disp.value <= byte.max)
                             {
                                 modrm.value |= 0b01_000_100;
@@ -223,7 +176,7 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                         case Mem.Mode.indexScaleDisp:
                             disp.write = true;
                             disp.bytes = 4;
-                            disp.value = mem.disp.solvedValue;
+                            disp.value = mem.disp;
                             modrm.value |= 0b100;
                             sib.value |= 0b101;
                             sib.value |= mem.index.regNum << 3;
@@ -232,7 +185,7 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                             break;
                         case Mem.Mode.baseIndexScaleDisp:
                             disp.write = true;
-                            disp.value = mem.disp.solvedValue;
+                            disp.value = mem.disp;
                             if(disp.value <= byte.max)
                             {
                                 modrm.value |= 0b01_000_100;
