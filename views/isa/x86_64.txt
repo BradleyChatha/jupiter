@@ -1,0 +1,20 @@
+add al,i8                       04      NI
+add ax,i16                      05      NI                          P3OP
+add eax,i32                     05      NI
+add rax,i32                     05      NI                  REXW
+add rm8,i8                      80      MI      REG0
+addsx rm8,i8                    80      MI      REG0        REXW
+add rm16,i16                    81      MI      REG0
+add rm32,i32                    81      MI      REG0
+add rm64,i32                    81      MI      REG0        REXW
+add rm16,i8                     83      MI      REG0                P3OP
+add rm32,i8                     83      MI      REG0
+add rm64,i8                     83      MI      REG0        REXW
+add rm8,r8                      00      MR      REG0
+add rm16,r16                    01      MR      REG0                P3OP
+add rm32,r32                    01      MR      REG0
+add rm64,r64                    01      MR      REG0        REXW
+add r8,rm8                      02      RM      REG0
+add r16,rm16                    03      RM      REG0                P3OP
+add r32,rm32                    03      RM      REG0
+add r64,rm64                    03      RM      REG0        REXW

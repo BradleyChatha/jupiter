@@ -194,27 +194,7 @@ private alias reg   = i.RegType;
 private alias f     = i.Flags;
 private alias m     = Mneumonic;
 immutable INSTRUCTIONS = [
-    i(m.add, "addali8", pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x4], [ot.r, ot.imm, ot.none], [st.s8,  st.s8,  st.infer], [oe.none, oe.imm, oe.none], [regi!"al", ri, ri], f.none),
-i(m.add, "addaxi16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x5], [ot.r, ot.imm, ot.none], [st.s16,  st.s16,  st.infer], [oe.none, oe.imm, oe.none], [regi!"ax", ri, ri], f.none),
-i(m.add, "addeaxi32", pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x5], [ot.r, ot.imm, ot.none], [st.s32,  st.s32,  st.infer], [oe.none, oe.imm, oe.none], [regi!"eax", ri, ri], f.none),
-i(m.add, "addraxi32", pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0x5], [ot.r, ot.imm, ot.none], [st.s64,  st.s32,  st.infer], [oe.none, oe.imm, oe.none], [regi!"rax", ri, ri], f.none),
-i(m.add, "addrm8i8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.addsx, "addsxrm8i8", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm16i16", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm32i32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm64i32", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x81], [ot.rm, ot.imm, ot.none], [st.s64,  st.s32,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm16i8", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s16,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm32i8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s32,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm64i8", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x83], [ot.rm, ot.imm, ot.none], [st.s64,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm8r8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x0], [ot.rm, ot.r, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm16r16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x1], [ot.rm, ot.r, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm32r32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x1], [ot.rm, ot.r, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addrm64r64", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x1], [ot.rm, ot.r, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addr8rm8", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x2], [ot.r, ot.rm, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addr16rm16", pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg0, [0x3], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addr32rm32", pg2.none, pg3.none, pg4.none, rex.none, reg.reg0, [0x3], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
-i(m.add, "addr64rm64", pg2.none, pg3.none, pg4.none, rex.w, reg.reg0, [0x3], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
-
+    %s
 ];
 
 enum Mneumonic
