@@ -1,20 +1,92 @@
-add al,i8                       04      NI
-add ax,i16                      05      NI                          P3OP
-add eax,i32                     05      NI
-add rax,i32                     05      NI                  REXW
-add rm8,i8                      80      MI      REG0
-addsx rm8,i8                    80      MI      REG0        REXW
-add rm16,i16                    81      MI      REG0
-add rm32,i32                    81      MI      REG0
-add rm64,i32                    81      MI      REG0        REXW
-add rm16,i8                     83      MI      REG0                P3OP
-add rm32,i8                     83      MI      REG0
-add rm64,i8                     83      MI      REG0        REXW
-add rm8,r8                      00      MR      REG0
-add rm16,r16                    01      MR      REG0                P3OP
-add rm32,r32                    01      MR      REG0
-add rm64,r64                    01      MR      REG0        REXW
-add r8,rm8                      02      RM      REG0
-add r16,rm16                    03      RM      REG0                P3OP
-add r32,rm32                    03      RM      REG0
-add r64,rm64                    03      RM      REG0        REXW
+adc al,i8                       14          NI
+adc ax,i16                      15          NI                      P3OP
+adc eax,i32                     15          NI
+adc rax,i32                     15          NI              REXW
+adc rm8,i8                      80          MI      REG2
+adc rm16,i16                    81          MI      REG2            P3OP
+adc rm32,i32                    81          MI      REG2
+adc rm64,i32                    81          MI      REG2    REXW
+adc rm16,i8                     83          MI      REG2            P3OP
+adc rm32,i8                     83          MI      REG2
+adc rm64,i8                     83          MI      REG2    REXW
+adc rm8,r8                      10          MR
+adc rm16,r16                    11          MR                      P3OP
+adc rm32,r32                    11          MR
+adc rm64,r64                    11          MR              REXW
+adc r8,rm8                      12          RM
+adc r16,rm16                    13          RM                      P3OP
+adc r32,rm32                    13          RM
+adc r64,rm64                    13          RM              REXW
+adcx r32,rm32                   0F,38,F6    RM                      P3OP
+adcx r64,rm64                   0F,38,F6    RM              REXW    P3OP
+add al,i8                       04          NI
+add ax,i16                      05          NI                      P3OP
+add eax,i32                     05          NI
+add rax,i32                     05          NI              REXW
+add rm8,i8                      80          MI      REG0
+addsx rm8,i8                    80          MI      REG0    REXW
+add rm16,i16                    81          MI      REG0            P3OP
+add rm32,i32                    81          MI      REG0
+add rm64,i32                    81          MI      REG0     REXW
+add rm16,i8                     83          MI      REG0            P3OP
+add rm32,i8                     83          MI      REG0
+add rm64,i8                     83          MI      REG0    REXW
+add rm8,r8                      00          MR      REG0
+add rm16,r16                    01          MR      REG0            P3OP
+add rm32,r32                    01          MR      REG0
+add rm64,r64                    01          MR      REG0    REXW
+add r8,rm8                      02          RM      REG0
+add r16,rm16                    03          RM      REG0            P3OP
+add r32,rm32                    03          RM      REG0
+add r64,rm64                    03          RM      REG0    REXW
+and al,i8                       24          NI
+and ax,i16                      25          NI                      P3OP
+and eax,i32                     25          NI
+and rax,i32                     25          NI              REXW
+and rm8,i8                      80          MI      REG4
+and rm16,i16                    81          MI      REG4            P3OP
+and rm32,i32                    81          MI      REG4
+and rm64,i32                    81          MI      REG4    REXW
+and rm16,i8                     83          MI      REG4            P3OP
+and rm32,i8                     83          MI      REG4
+and rm64,i8                     83          MI      REG4    REXW
+and rm8,r8                      20          MR
+and rm16,r16                    21          MR                      P3OP
+and rm32,r32                    21          MR
+and rm64,r64                    21          MR               REXW
+and r8,rm8                      22          RM
+and r16,rm16                    23          RM                      P3OP
+and r32,rm32                    23          RM
+and r64,rm64                    23          RM              REXW
+bsf r16,rm16                    0F,BC       RM                      P3OP
+bsf r32,rm32                    0F,BC       RM
+bsf r64,rm64                    0F,BC       RM              REXW
+bsr r16,rm16                    0F,BD       RM                      P3OP
+bsr r32,rm32                    0F,BD       RM
+bsr r64,rm64                    0F,BD       RM              REXW
+bswap r32                       0F,C8       O
+bswap r64                       0F,C8       O               REXW
+bt rm16,r16                     0F,A3       MR                      P3OP
+bt rm32,r32                     0F,A3       MR
+bt rm64,r64                     0F,A3       MR              REXW
+bt rm16,i8                      0F,BA       MI      REG4            P3OP
+bt rm32,i8                      0F,BA       MI      REG4
+bt rm64,i8                      0F,BA       MI      REG4    REXW
+btc rm16,r16                    0F,BB       MR                      P3OP
+btc rm32,r32                    0F,BB       MR
+btc rm64,r64                    0F,BB       MR              REXW
+btc rm16,i8                     0F,BA       MI      REG7            P3OP
+btc rm32,i8                     0F,BA       MI      REG7
+btc rm64,i8                     0F,BA       MI      REG7    REXW
+btr rm16,r16                    0F,B3       MR                      P3OP
+btr rm32,r32                    0F,B3       MR
+btr rm64,r64                    0F,B3       MR              REXW
+btr rm16,i8                     0F,BA       MI      REG6            P3OP
+btr rm32,i8                     0F,BA       MI      REG6
+btr rm64,i8                     0F,BA       MI      REG6    REXW
+bts rm16,r16                    0F,AB       MR                      P3OP
+bts rm32,r32                    0F,AB       MR
+bts rm64,r64                    0F,AB       MR              REXW
+bts rm16,i8                     0F,BA       MI      REG5            P3OP
+bts rm32,i8                     0F,BA       MI      REG5
+bts rm64,i8                     0F,BA       MI      REG5    REXW

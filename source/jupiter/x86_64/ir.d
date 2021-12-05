@@ -14,6 +14,7 @@ struct Mem
     enum Mode
     {
         disp,
+        ripRelative,
         base_,
         baseIndex,
         baseDisp,
@@ -60,6 +61,11 @@ abstract class Ir
     abstract Instruction getInstruction();
 }
 
+abstract class IrWithRm : Ir
+{
+    ref Rm64 getRm();
+}
+
 private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
 {
     import std.bitmanip, std.algorithm, std.range;
@@ -81,7 +87,13 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
     {{
         const arg = argName(i);
         static if(oe == Instruction.OperandEncoding.add)
-            opAdd = mixin("ir."~arg~".value");
+        {
+            static if(Ir.INSTRUCTION.op_t[i] == Instruction.OperandType.r)
+            {
+                opAdd = cast(int)mixin("ir."~arg~".value.regNum");
+                if(mixin("ir."~arg~".value.cat") >= Register.Category.r8) rex |= Instruction.Rex.b;
+            }
+        }
         else static if(oe == Instruction.OperandEncoding.imm)
         {
             imm.write = true;
@@ -113,6 +125,13 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                         case Mem.Mode.disp:
                             modrm.value |= 0b100;
                             sib.value = 0b00_100_101;
+                            disp.write = true;
+                            disp.bytes = 4;
+                            disp.value = mem.disp;
+                            break;
+                        case Mem.Mode.ripRelative:
+                            modrm.value |= 0b00_000_101;
+                            sib.write = false;
                             disp.write = true;
                             disp.bytes = 4;
                             disp.value = mem.disp;
@@ -207,12 +226,15 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                 (reg){
                     modrm.write = true;
                     modrm.value |= reg.value.regNum;
+                    modrm.value |= 0b11_000_000;
                     if(reg.value.cat >= Register.Category.r8) rex |= Instruction.Rex.b;
                 }
             );
         }
     }}
 
+    static if(Ir.INSTRUCTION.p_g1 != G1Prefix.none)
+        bytes[cursor++] = cast(ubyte)Ir.INSTRUCTION.p_g1;
     static if(Ir.INSTRUCTION.p_g2 != G2Prefix.none)
         bytes[cursor++] = cast(ubyte)Ir.INSTRUCTION.p_g2;
     static if(Ir.INSTRUCTION.p_g3 != G3Prefix.none)
@@ -254,7 +276,7 @@ private string argName(int i)
 {
     import std.conv;
     return "arg"~i.to!string;
-}final class addali8 : Ir {
+}final class adcali8 : Ir {
     static immutable INSTRUCTION = INSTRUCTIONS[0];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[0]; }
     Reg8 arg0;
@@ -265,12 +287,12 @@ private string argName(int i)
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
     }
-}
-final class addaxi16 : Ir {
+final class adcaxi16 : Ir {
     static immutable INSTRUCTION = INSTRUCTIONS[1];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[1]; }
     Reg16 arg0;
@@ -281,12 +303,12 @@ final class addaxi16 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
     }
-}
-final class addeaxi32 : Ir {
+final class adceaxi32 : Ir {
     static immutable INSTRUCTION = INSTRUCTIONS[2];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[2]; }
     Reg32 arg0;
@@ -297,12 +319,12 @@ final class addeaxi32 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
     }
-}
-final class addraxi32 : Ir {
+final class adcraxi32 : Ir {
     static immutable INSTRUCTION = INSTRUCTIONS[3];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[3]; }
     Reg64 arg0;
@@ -313,12 +335,12 @@ final class addraxi32 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
     }
-}
-final class addrm8i8 : Ir {
+final class adcrm8i8 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[4];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[4]; }
     Rm64 arg0;
@@ -329,30 +351,15 @@ final class addrm8i8 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addsxrm8i8 : Ir {
+final class adcrm16i16 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[5];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[5]; }
-    Rm64 arg0;
-    Imm8 arg1;
-    this(Rm64 arg0, Imm8 arg1)
-    {
-        this.arg0 = arg0;
-        this.arg1 = arg1;
-    }
-
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
-}
-final class addrm16i16 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[6];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[6]; }
     Rm64 arg0;
     Imm16 arg1;
     this(Rm64 arg0, Imm16 arg1)
@@ -361,12 +368,30 @@ final class addrm16i16 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm32i32 : Ir {
+final class adcrm32i32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[6];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[6]; }
+    Rm64 arg0;
+    Imm32 arg1;
+    this(Rm64 arg0, Imm32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class adcrm64i32 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[7];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[7]; }
     Rm64 arg0;
@@ -377,28 +402,30 @@ final class addrm32i32 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm64i32 : Ir {
+final class adcrm16i8 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[8];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[8]; }
     Rm64 arg0;
-    Imm32 arg1;
-    this(Rm64 arg0, Imm32 arg1)
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
     {
         this.arg0 = arg0;
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm16i8 : Ir {
+final class adcrm32i8 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[9];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[9]; }
     Rm64 arg0;
@@ -409,12 +436,13 @@ final class addrm16i8 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm32i8 : Ir {
+final class adcrm64i8 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[10];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[10]; }
     Rm64 arg0;
@@ -425,30 +453,15 @@ final class addrm32i8 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm64i8 : Ir {
+final class adcrm8r8 : IrWithRm {
     static immutable INSTRUCTION = INSTRUCTIONS[11];
     override Instruction getInstruction() { return cast()INSTRUCTIONS[11]; }
-    Rm64 arg0;
-    Imm8 arg1;
-    this(Rm64 arg0, Imm8 arg1)
-    {
-        this.arg0 = arg0;
-        this.arg1 = arg1;
-    }
-
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
-}
-final class addrm8r8 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[12];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[12]; }
     Rm64 arg0;
     Reg8 arg1;
     this(Rm64 arg0, Reg8 arg1)
@@ -457,14 +470,15 @@ final class addrm8r8 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm16r16 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[13];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[13]; }
+final class adcrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[12];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[12]; }
     Rm64 arg0;
     Reg16 arg1;
     this(Rm64 arg0, Reg16 arg1)
@@ -473,14 +487,15 @@ final class addrm16r16 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm32r32 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[14];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[14]; }
+final class adcrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[13];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[13]; }
     Rm64 arg0;
     Reg32 arg1;
     this(Rm64 arg0, Reg32 arg1)
@@ -489,14 +504,15 @@ final class addrm32r32 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addrm64r64 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[15];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[15]; }
+final class adcrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[14];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[14]; }
     Rm64 arg0;
     Reg64 arg1;
     this(Rm64 arg0, Reg64 arg1)
@@ -505,14 +521,15 @@ final class addrm64r64 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }
-final class addr8rm8 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[16];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[16]; }
+final class adcr8rm8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[15];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[15]; }
     Reg8 arg0;
     Rm64 arg1;
     this(Reg8 arg0, Rm64 arg1)
@@ -521,14 +538,15 @@ final class addr8rm8 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
 }
-final class addr16rm16 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[17];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[17]; }
+final class adcr16rm16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[16];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[16]; }
     Reg16 arg0;
     Rm64 arg1;
     this(Reg16 arg0, Rm64 arg1)
@@ -537,14 +555,15 @@ final class addr16rm16 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
 }
-final class addr32rm32 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[18];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[18]; }
+final class adcr32rm32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[17];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[17]; }
     Reg32 arg0;
     Rm64 arg1;
     this(Reg32 arg0, Rm64 arg1)
@@ -553,14 +572,15 @@ final class addr32rm32 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
-    {
-        return emit!(typeof(this))(this, bytes);
-    }
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
 }
-final class addr64rm64 : Ir {
-    static immutable INSTRUCTION = INSTRUCTIONS[19];
-    override Instruction getInstruction() { return cast()INSTRUCTIONS[19]; }
+final class adcr64rm64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[18];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[18]; }
     Reg64 arg0;
     Rm64 arg1;
     this(Reg64 arg0, Rm64 arg1)
@@ -569,8 +589,1236 @@ final class addr64rm64 : Ir {
         this.arg1 = arg1;
     }
 
-    override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class adcxr32rm32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[19];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[19]; }
+    Reg32 arg0;
+    Rm64 arg1;
+    this(Reg32 arg0, Rm64 arg1)
     {
-        return emit!(typeof(this))(this, bytes);
+        this.arg0 = arg0;
+        this.arg1 = arg1;
     }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class adcxr64rm64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[20];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[20]; }
+    Reg64 arg0;
+    Rm64 arg1;
+    this(Reg64 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class addali8 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[21];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[21]; }
+    Reg8 arg0;
+    Imm8 arg1;
+    this(Imm8 arg1)
+    {
+        this.arg0 = regi!"al";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class addaxi16 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[22];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[22]; }
+    Reg16 arg0;
+    Imm16 arg1;
+    this(Imm16 arg1)
+    {
+        this.arg0 = regi!"ax";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class addeaxi32 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[23];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[23]; }
+    Reg32 arg0;
+    Imm32 arg1;
+    this(Imm32 arg1)
+    {
+        this.arg0 = regi!"eax";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class addraxi32 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[24];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[24]; }
+    Reg64 arg0;
+    Imm32 arg1;
+    this(Imm32 arg1)
+    {
+        this.arg0 = regi!"rax";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class addrm8i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[25];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[25]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addsxrm8i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[26];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[26]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm16i16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[27];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[27]; }
+    Rm64 arg0;
+    Imm16 arg1;
+    this(Rm64 arg0, Imm16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm32i32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[28];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[28]; }
+    Rm64 arg0;
+    Imm32 arg1;
+    this(Rm64 arg0, Imm32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm64i32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[29];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[29]; }
+    Rm64 arg0;
+    Imm32 arg1;
+    this(Rm64 arg0, Imm32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm16i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[30];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[30]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm32i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[31];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[31]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm64i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[32];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[32]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm8r8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[33];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[33]; }
+    Rm64 arg0;
+    Reg8 arg1;
+    this(Rm64 arg0, Reg8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[34];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[34]; }
+    Rm64 arg0;
+    Reg16 arg1;
+    this(Rm64 arg0, Reg16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[35];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[35]; }
+    Rm64 arg0;
+    Reg32 arg1;
+    this(Rm64 arg0, Reg32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[36];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[36]; }
+    Rm64 arg0;
+    Reg64 arg1;
+    this(Rm64 arg0, Reg64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class addr8rm8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[37];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[37]; }
+    Reg8 arg0;
+    Rm64 arg1;
+    this(Reg8 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class addr16rm16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[38];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[38]; }
+    Reg16 arg0;
+    Rm64 arg1;
+    this(Reg16 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class addr32rm32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[39];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[39]; }
+    Reg32 arg0;
+    Rm64 arg1;
+    this(Reg32 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class addr64rm64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[40];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[40]; }
+    Reg64 arg0;
+    Rm64 arg1;
+    this(Reg64 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class andali8 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[41];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[41]; }
+    Reg8 arg0;
+    Imm8 arg1;
+    this(Imm8 arg1)
+    {
+        this.arg0 = regi!"al";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class andaxi16 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[42];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[42]; }
+    Reg16 arg0;
+    Imm16 arg1;
+    this(Imm16 arg1)
+    {
+        this.arg0 = regi!"ax";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class andeaxi32 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[43];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[43]; }
+    Reg32 arg0;
+    Imm32 arg1;
+    this(Imm32 arg1)
+    {
+        this.arg0 = regi!"eax";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class andraxi32 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[44];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[44]; }
+    Reg64 arg0;
+    Imm32 arg1;
+    this(Imm32 arg1)
+    {
+        this.arg0 = regi!"rax";
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class andrm8i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[45];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[45]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm16i16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[46];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[46]; }
+    Rm64 arg0;
+    Imm16 arg1;
+    this(Rm64 arg0, Imm16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm32i32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[47];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[47]; }
+    Rm64 arg0;
+    Imm32 arg1;
+    this(Rm64 arg0, Imm32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm64i32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[48];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[48]; }
+    Rm64 arg0;
+    Imm32 arg1;
+    this(Rm64 arg0, Imm32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm16i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[49];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[49]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm32i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[50];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[50]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm64i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[51];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[51]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm8r8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[52];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[52]; }
+    Rm64 arg0;
+    Reg8 arg1;
+    this(Rm64 arg0, Reg8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[53];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[53]; }
+    Rm64 arg0;
+    Reg16 arg1;
+    this(Rm64 arg0, Reg16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[54];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[54]; }
+    Rm64 arg0;
+    Reg32 arg1;
+    this(Rm64 arg0, Reg32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[55];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[55]; }
+    Rm64 arg0;
+    Reg64 arg1;
+    this(Rm64 arg0, Reg64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class andr8rm8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[56];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[56]; }
+    Reg8 arg0;
+    Rm64 arg1;
+    this(Reg8 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class andr16rm16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[57];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[57]; }
+    Reg16 arg0;
+    Rm64 arg1;
+    this(Reg16 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class andr32rm32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[58];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[58]; }
+    Reg32 arg0;
+    Rm64 arg1;
+    this(Reg32 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class andr64rm64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[59];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[59]; }
+    Reg64 arg0;
+    Rm64 arg1;
+    this(Reg64 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bsfr16rm16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[60];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[60]; }
+    Reg16 arg0;
+    Rm64 arg1;
+    this(Reg16 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bsfr32rm32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[61];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[61]; }
+    Reg32 arg0;
+    Rm64 arg1;
+    this(Reg32 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bsfr64rm64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[62];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[62]; }
+    Reg64 arg0;
+    Rm64 arg1;
+    this(Reg64 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bsrr16rm16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[63];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[63]; }
+    Reg16 arg0;
+    Rm64 arg1;
+    this(Reg16 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bsrr32rm32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[64];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[64]; }
+    Reg32 arg0;
+    Rm64 arg1;
+    this(Reg32 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bsrr64rm64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[65];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[65]; }
+    Reg64 arg0;
+    Rm64 arg1;
+    this(Reg64 arg0, Rm64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg1; }
+}
+final class bswapr32 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[66];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[66]; }
+    Reg32 arg0;
+    this(Reg32 arg0)
+    {
+        this.arg0 = arg0;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class bswapr64 : Ir {
+    static immutable INSTRUCTION = INSTRUCTIONS[67];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[67]; }
+    Reg64 arg0;
+    this(Reg64 arg0)
+    {
+        this.arg0 = arg0;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+    }
+final class btrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[68];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[68]; }
+    Rm64 arg0;
+    Reg16 arg1;
+    this(Rm64 arg0, Reg16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[69];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[69]; }
+    Rm64 arg0;
+    Reg32 arg1;
+    this(Rm64 arg0, Reg32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[70];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[70]; }
+    Rm64 arg0;
+    Reg64 arg1;
+    this(Rm64 arg0, Reg64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrm16i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[71];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[71]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrm32i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[72];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[72]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrm64i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[73];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[73]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btcrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[74];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[74]; }
+    Rm64 arg0;
+    Reg16 arg1;
+    this(Rm64 arg0, Reg16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btcrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[75];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[75]; }
+    Rm64 arg0;
+    Reg32 arg1;
+    this(Rm64 arg0, Reg32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btcrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[76];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[76]; }
+    Rm64 arg0;
+    Reg64 arg1;
+    this(Rm64 arg0, Reg64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btcrm16i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[77];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[77]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btcrm32i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[78];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[78]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btcrm64i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[79];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[79]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[80];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[80]; }
+    Rm64 arg0;
+    Reg16 arg1;
+    this(Rm64 arg0, Reg16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[81];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[81]; }
+    Rm64 arg0;
+    Reg32 arg1;
+    this(Rm64 arg0, Reg32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[82];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[82]; }
+    Rm64 arg0;
+    Reg64 arg1;
+    this(Rm64 arg0, Reg64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrrm16i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[83];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[83]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrrm32i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[84];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[84]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btrrm64i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[85];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[85]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btsrm16r16 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[86];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[86]; }
+    Rm64 arg0;
+    Reg16 arg1;
+    this(Rm64 arg0, Reg16 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btsrm32r32 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[87];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[87]; }
+    Rm64 arg0;
+    Reg32 arg1;
+    this(Rm64 arg0, Reg32 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btsrm64r64 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[88];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[88]; }
+    Rm64 arg0;
+    Reg64 arg1;
+    this(Rm64 arg0, Reg64 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btsrm16i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[89];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[89]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btsrm32i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[90];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[90]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
+}
+final class btsrm64i8 : IrWithRm {
+    static immutable INSTRUCTION = INSTRUCTIONS[91];
+    override Instruction getInstruction() { return cast()INSTRUCTIONS[91]; }
+    Rm64 arg0;
+    Imm8 arg1;
+    this(Rm64 arg0, Imm8 arg1)
+    {
+        this.arg0 = arg0;
+        this.arg1 = arg1;
+    }
+
+        override ubyte[] getBytes(scope ref return ubyte[32] bytes)
+        {
+            return emit!(typeof(this))(this, bytes);
+        }
+        override ref Rm64 getRm(){ return arg0; }
 }

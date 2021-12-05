@@ -14,6 +14,7 @@ struct Mem
     enum Mode
     {
         disp,
+        ripRelative,
         base_,
         baseIndex,
         baseDisp,
@@ -60,6 +61,11 @@ abstract class Ir
     abstract Instruction getInstruction();
 }
 
+abstract class IrWithRm : Ir
+{
+    ref Rm64 getRm();
+}
+
 private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
 {
     import std.bitmanip, std.algorithm, std.range;
@@ -81,7 +87,13 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
     {{
         const arg = argName(i);
         static if(oe == Instruction.OperandEncoding.add)
-            opAdd = mixin("ir."~arg~".value");
+        {
+            static if(Ir.INSTRUCTION.op_t[i] == Instruction.OperandType.r)
+            {
+                opAdd = cast(int)mixin("ir."~arg~".value.regNum");
+                if(mixin("ir."~arg~".value.cat") >= Register.Category.r8) rex |= Instruction.Rex.b;
+            }
+        }
         else static if(oe == Instruction.OperandEncoding.imm)
         {
             imm.write = true;
@@ -113,6 +125,13 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                         case Mem.Mode.disp:
                             modrm.value |= 0b100;
                             sib.value = 0b00_100_101;
+                            disp.write = true;
+                            disp.bytes = 4;
+                            disp.value = mem.disp;
+                            break;
+                        case Mem.Mode.ripRelative:
+                            modrm.value |= 0b00_000_101;
+                            sib.write = false;
                             disp.write = true;
                             disp.bytes = 4;
                             disp.value = mem.disp;
@@ -207,12 +226,15 @@ private ubyte[] emit(alias Ir)(Ir ir, ref scope return ubyte[32] bytes)
                 (reg){
                     modrm.write = true;
                     modrm.value |= reg.value.regNum;
+                    modrm.value |= 0b11_000_000;
                     if(reg.value.cat >= Register.Category.r8) rex |= Instruction.Rex.b;
                 }
             );
         }
     }}
 
+    static if(Ir.INSTRUCTION.p_g1 != G1Prefix.none)
+        bytes[cursor++] = cast(ubyte)Ir.INSTRUCTION.p_g1;
     static if(Ir.INSTRUCTION.p_g2 != G2Prefix.none)
         bytes[cursor++] = cast(ubyte)Ir.INSTRUCTION.p_g2;
     static if(Ir.INSTRUCTION.p_g3 != G3Prefix.none)

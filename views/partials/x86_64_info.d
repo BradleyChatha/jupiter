@@ -51,12 +51,12 @@ struct Register
     ubyte regNum;
 }
 
-enum Prefix
+enum G1Prefix
 {
     none,
-    lock,
-    rep,
-    repnz
+    lock = 0xF0,
+    rep = 0xF2,
+    repnz = 0xF3
 }
 
 enum G2Prefix
@@ -82,7 +82,7 @@ enum G4Prefix
     addrSize = 0x67
 }
 
-private alias pg1 = Prefix;
+private alias pg1 = G1Prefix;
 private alias pg2 = G2Prefix;
 private alias pg3 = G3Prefix;
 private alias pg4 = G4Prefix;
@@ -167,6 +167,7 @@ struct Instruction
 
     Mneumonic mneumonic;
     string name;
+    G1Prefix p_g1;
     G2Prefix p_g2;
     G3Prefix p_g3;
     G4Prefix p_g4;

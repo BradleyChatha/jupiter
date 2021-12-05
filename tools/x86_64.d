@@ -35,6 +35,9 @@ version(Info)
                     o.oe[0] = "rm_reg";
                     o.oe[1] = "rm_rm";
                     break;
+                case "O":
+                    o.oe[0] = "add";
+                    break;
                 default: throw new Exception("Unknown encoding: "~inf.encoding);
             }
 
@@ -98,6 +101,9 @@ version(Info)
                     case "REG7": o.reg = "reg7"; break;
                     case "REXW": o.rex = "w"; break;
                     case "P3OP": o.pg3 = "opSize"; break;
+                    case "LOCK": o.pg1 = "lock"; break;
+                    case "REPE": o.pg1 = "rep"; break;
+                    case "REPN": o.pg1 = "repnz"; break;
                     default: throw new Exception("Unknown flag: "~flag);
                 }
             }
@@ -113,6 +119,7 @@ version(Info)
     {
         string mneumonic;
         string name;
+        string pg1 = "none";
         string pg2 = "none";
         string pg3 = "none";
         string pg4 = "none";
@@ -127,9 +134,10 @@ version(Info)
 
         string toString() const
         {
-            return "i(m.%s, \"%s\", pg2.%s, pg3.%s, pg4.%s, rex.%s, reg.%s, [%s], [ot.%s, ot.%s, ot.%s], [st.%s,  st.%s,  st.%s], [oe.%s, oe.%s, oe.%s], [%s, %s, %s], f.%s),".format(
+            return "i(m.%s, \"%s\", pg1.%s, pg2.%s, pg3.%s, pg4.%s, rex.%s, reg.%s, [%s], [ot.%s, ot.%s, ot.%s], [st.%s,  st.%s,  st.%s], [oe.%s, oe.%s, oe.%s], [%s, %s, %s], f.%s),".format(
                 mneumonic,
                 name,
+                pg1,
                 pg2,
                 pg3,
                 pg4,
@@ -162,6 +170,7 @@ version(Info)
                 .map!((line)
                 {
                     auto data = line.split(' ').filter!(d => d.length > 0).array;
+                    writeln(data);
                     return Info(
                         data[0],
                         data[1].split(',').array,
@@ -190,7 +199,10 @@ else version(Ir)
             Appender!(char[]) getBytes;
             Appender!(char[]) getBytesPost;
 
-            output.put("final class %s : Ir {\n".format(inst.name));
+            const hasRm = inst.op_t[].canFind(Instruction.OperandType.rm);
+            string rmArg;
+
+            output.put("final class %s : %s {\n".format(inst.name, hasRm ? "IrWithRm" : "Ir"));
             output.put("    static immutable INSTRUCTION = INSTRUCTIONS[%s];\n".format(i));
             output.put("    override Instruction getInstruction() { return cast()INSTRUCTIONS[%s]; }\n".format(i));
 
@@ -256,6 +268,7 @@ else version(Ir)
                         if(!isConstParam) ctorParams.put(" "~argName(i2));
                         break;
                     case rm:
+                        rmArg = argName(i2);
                         final switch(inst.op_s[i2]) with(SizeType)
                         {
                             case infer: assert(false);
@@ -279,6 +292,9 @@ else version(Ir)
         }
     `);
 
+            if(hasRm)
+                getBytes.put("    override ref Rm64 getRm(){ return %s; }\n".format(rmArg));
+
             output.put(vars.data);
             output.put(ctorParams.data);
             output.put(ctorBody.data);
@@ -286,7 +302,6 @@ else version(Ir)
             output.put("}\n");
         }
 
-        writeln(output.data);
         std.file.write("../source/jupiter/x86_64/ir.d", output.data);
     }
 
