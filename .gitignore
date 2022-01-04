@@ -19,3 +19,4 @@ test.bin
 tools/tool
 tools/irgen
 temp.bin
+.DS_Store
