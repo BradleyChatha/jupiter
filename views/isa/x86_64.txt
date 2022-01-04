@@ -90,3 +90,126 @@ bts rm64,r64                    0F,AB       MR              REXW
 bts rm16,i8                     0F,BA       MI      REG5            P3OP
 bts rm32,i8                     0F,BA       MI      REG5
 bts rm64,i8                     0F,BA       MI      REG5    REXW
+call i32                        E8          D
+call rm64                       FF          M       REG2
+cbw none                        98          NP                      P3OP
+cwde none                       98          NP
+cdqe none                       98          NP              REXW
+clac none                       0F,01,CA    NP
+clc none                        F8          NP
+cld none                        FC          NP
+clflush m8                      0F,AE       M       REG7
+clflushopt m8                   0F,AE       M       REG7            P3OP
+cli none                        FA          NP
+clts none                       0F,06       NP
+clwb m8                         0F,AE       M       REG6            P3OP
+cmc none                        F5          NP
+cmova r16,rm16                  0F,47       RM                      P3OP
+cmova r32,rm32                  0F,47       RM
+cmova r64,rm64                  0F,47       RM              REXW
+cmovae r16,rm16                 0F,43       RM                      P3OP
+cmovae r32,rm32                 0F,43       RM
+cmovae r64,rm64                 0F,43       RM              REXW
+cmovb r16,rm16                  0F,42       RM                      P3OP
+cmovb r32,rm32                  0F,42       RM
+cmovb r64,rm64                  0F,42       RM              REXW
+cmovbe r16,rm16                 0F,46       RM                      P3OP
+cmovbe r32,rm32                 0F,46       RM
+cmovbe r64,rm64                 0F,46       RM              REXW
+cmovc r16,rm16                  0F,42       RM                      P3OP
+cmovc r32,rm32                  0F,42       RM
+cmovc r64,rm64                  0F,42       RM              REXW
+cmove r16,rm16                  0F,44       RM                      P3OP
+cmove r32,rm32                  0F,44       RM
+cmove r64,rm64                  0F,44       RM              REXW
+cmovg r16,rm16                  0F,4F       RM                      P3OP
+cmovg r32,rm32                  0F,4F       RM
+cmovg r64,rm64                  0F,4F       RM              REXW
+cmovge r16,rm16                 0F,4D       RM                      P3OP
+cmovge r32,rm32                 0F,4D       RM
+cmovge r64,rm64                 0F,4D       RM              REXW
+cmovl r16,rm16                  0F,4C       RM                      P3OP
+cmovl r32,rm32                  0F,4C       RM
+cmovl r64,rm64                  0F,4C       RM              REXW
+cmovle r16,rm16                 0F,4E       RM                      P3OP
+cmovle r32,rm32                 0F,4E       RM
+cmovle r64,rm64                 0F,4E       RM              REXW
+cmovna r16,rm16                 0F,46       RM                      P3OP
+cmovna r32,rm32                 0F,46       RM
+cmovna r64,rm64                 0F,46       RM              REXW
+cmovnae r16,rm16                0F,42       RM                      P3OP
+cmovnae r32,rm32                0F,42       RM
+cmovnae r64,rm64                0F,42       RM              REXW
+cmovnb r16,rm16                 0F,43       RM                      P3OP
+cmovnb r32,rm32                 0F,43       RM
+cmovnb r64,rm64                 0F,43       RM              REXW
+cmovnbe r16,rm16                0F,47       RM                      P3OP
+cmovnbe r32,rm32                0F,47       RM
+cmovnbe r64,rm64                0F,47       RM              REXW
+cmovnc r16,rm16                 0F,43       RM                      P3OP
+cmovnc r32,rm32                 0F,43       RM
+cmovnc r64,rm64                 0F,43       RM              REXW
+cmovne r16,rm16                 0F,45       RM                      P3OP
+cmovne r32,rm32                 0F,45       RM
+cmovne r64,rm64                 0F,45       RM              REXW
+cmovng r16,rm16                 0F,4E       RM                      P3OP
+cmovng r32,rm32                 0F,4E       RM
+cmovng r64,rm64                 0F,4E       RM              REXW
+cmovnge r16,rm16                0F,4C       RM                      P3OP
+cmovnge r32,rm32                0F,4C       RM
+cmovnge r64,rm64                0F,4C       RM              REXW
+cmovnl r16,rm16                 0F,4D       RM                      P3OP
+cmovnl r32,rm32                 0F,4D       RM
+cmovnl r64,rm64                 0F,4D       RM              REXW
+cmovnle r16,rm16                0F,4F       RM                      P3OP
+cmovnle r32,rm32                0F,4F       RM
+cmovnle r64,rm64                0F,4F       RM              REXW
+cmovno r16,rm16                 0F,41       RM                      P3OP
+cmovno r32,rm32                 0F,41       RM
+cmovno r64,rm64                 0F,41       RM              REXW
+cmovnp r16,rm16                 0F,4B       RM                      P3OP
+cmovnp r32,rm32                 0F,4B       RM
+cmovnp r64,rm64                 0F,4B       RM              REXW
+cmovns r16,rm16                 0F,49       RM                      P3OP
+cmovns r32,rm32                 0F,49       RM
+cmovns r64,rm64                 0F,49       RM              REXW
+cmovnz r16,rm16                 0F,45       RM                      P3OP
+cmovnz r32,rm32                 0F,45       RM
+cmovnz r64,rm64                 0F,45       RM              REXW
+cmovo r16,rm16                  0F,40       RM                      P3OP
+cmovo r32,rm32                  0F,40       RM
+cmovo r64,rm64                  0F,40       RM              REXW
+cmovp r16,rm16                  0F,4A       RM                      P3OP
+cmovp r32,rm32                  0F,4A       RM
+cmovp r64,rm64                  0F,4A       RM              REXW
+cmovpe r16,rm16                 0F,4A       RM                      P3OP
+cmovpe r32,rm32                 0F,4A       RM
+cmovpe r64,rm64                 0F,4A       RM              REXW
+cmovnpo r16,rm16                0F,4B       RM                      P3OP
+cmovnpo r32,rm32                0F,4B       RM
+cmovnpo r64,rm64                0F,4B       RM              REXW
+cmovs r16,rm16                  0F,48       RM                      P3OP
+cmovs r32,rm32                  0F,48       RM
+cmovs r64,rm64                  0F,48       RM              REXW
+cmovz r16,rm16                  0F,44       RM                      P3OP
+cmovz r32,rm32                  0F,44       RM
+cmovz r64,rm64                  0F,44       RM              REXW
+cmp al,i8                       3C          NI
+cmp ax,i16                      3D          NI                      P3OP
+cmp eax,i32                     3D          NI
+cmp rax,i32                     3D          NI              REXW
+cmp rm8,i8                      80          MI      REG7
+cmp rm16,i16                    81          MI      REG7            P3OP
+cmp rm32,i32                    81          MI      REG7
+cmp rm64,i32                    81          MI      REG7    REXW
+cmp rm16,i8                     83          MI      REG7            P3OP
+cmp rm32,i8                     83          MI      REG7
+cmp rm64,i8                     83          MI      REG7    REXW
+cmp rm8,r8                      38          MR
+cmp rm16,r16                    39          MR                      P3OP
+cmp rm32,r32                    39          MR
+cmp rm64,r64                    39          MR              REXW
+cmp r8,rm8                      3A          RM
+cmp r16,rm16                    3B          RM                      P3OP
+cmp r32,rm32                    3B          RM
+cmp r64,rm64                    3B          RM              REXW

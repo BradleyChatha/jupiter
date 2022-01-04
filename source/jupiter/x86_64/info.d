@@ -8,9 +8,9 @@ Register[string] g_registers;
 
 shared static this()
 {
-    static foreach(member; __traits(allMembers, Mneumonic))
-        g_mneumonics[member] = mixin("Mneumonic."~member);
-    static foreach(reg; Registers)
+    static foreach (member; __traits(allMembers, Mneumonic))
+        g_mneumonics[member] = mixin("Mneumonic." ~ member);
+    static foreach (reg; Registers)
         g_registers[reg.name] = reg;
 }
 
@@ -91,22 +91,42 @@ private alias rc = Register.Category;
 private alias st = SizeType;
 private alias r = Register;
 immutable Registers = [
-    r("rax",    st.s64, rc.rax, 0), r("eax",    st.s32, rc.rax, 0), r("ax",     st.s16, rc.rax, 0), r("ah",     st.s8, rc.rax, 0), r("al", st.s8, rc.rax, 0),
-    r("rbx",    st.s64, rc.rbx, 3), r("ebx",    st.s32, rc.rbx, 3), r("bx",     st.s16, rc.rbx, 3), r("bh",     st.s8, rc.rbx, 3), r("bl", st.s8, rc.rbx, 3),
-    r("rcx",    st.s64, rc.rcx, 1), r("ecx",    st.s32, rc.rcx, 1), r("cx",     st.s16, rc.rcx, 1), r("ch",     st.s8, rc.rcx, 1), r("cl", st.s8, rc.rcx, 1),
-    r("rdx",    st.s64, rc.rdx, 2), r("edx",    st.s32, rc.rdx, 2), r("dx",     st.s16, rc.rdx, 2), r("dh",     st.s8, rc.rdx, 2), r("dl", st.s8, rc.rdx, 2),
-    r("rsi",    st.s64, rc.rsi, 6), r("esi",    st.s32, rc.rsi, 6), r("si",     st.s16, rc.rsi, 6), r("sil",    st.s8, rc.rsi, 6),
-    r("rdi",    st.s64, rc.rdi, 7), r("edi",    st.s32, rc.rdi, 7), r("di",     st.s16, rc.rdi, 7), r("dil",    st.s8, rc.rdi, 7),
-    r("rsp",    st.s64, rc.rsp, 4), r("esp",    st.s32, rc.rsp, 4), r("sp",     st.s16, rc.rsp, 4), r("spl",    st.s8, rc.rsp, 4),
-    r("rbp",    st.s64, rc.rbp, 5), r("ebp",    st.s32, rc.rbp, 5), r("bp",     st.s16, rc.rbp, 5), r("bpl",    st.s8, rc.rbp, 5),
-    r("r8",     st.s64, rc.r8,  0), r("r8d",    st.s32, rc.r8,  0), r("r8w",    st.s16, rc.r8,  0), r("r8b",    st.s8, rc.r8,  0),
-    r("r9",     st.s64, rc.r9,  1), r("r9d",    st.s32, rc.r9,  1), r("r9w",    st.s16, rc.r9,  1), r("r9b",    st.s8, rc.r9,  1),
-    r("r10",    st.s64, rc.r10, 2), r("r10d",   st.s32, rc.r10, 2), r("r10w",   st.s16, rc.r10, 2), r("r10b",   st.s8, rc.r10, 2),
-    r("r11",    st.s64, rc.r11, 3), r("r11d",   st.s32, rc.r11, 3), r("r11w",   st.s16, rc.r11, 3), r("r11b",   st.s8, rc.r11, 3),
-    r("r12",    st.s64, rc.r12, 4), r("r12d",   st.s32, rc.r12, 4), r("r12w",   st.s16, rc.r12, 4), r("r12b",   st.s8, rc.r12, 4),
-    r("r13",    st.s64, rc.r13, 5), r("r13d",   st.s32, rc.r13, 5), r("r13w",   st.s16, rc.r13, 5), r("r13b",   st.s8, rc.r13, 5),
-    r("r14",    st.s64, rc.r14, 6), r("r14d",   st.s32, rc.r14, 6), r("r14w",   st.s16, rc.r14, 6), r("r14b",   st.s8, rc.r14, 6),
-    r("r15",    st.s64, rc.r15, 7), r("r15d",   st.s32, rc.r15, 7), r("r15w",   st.s16, rc.r15, 7), r("r15b",   st.s8, rc.r15, 7),
+    r("rax", st.s64, rc.rax, 0), r("eax", st.s32, rc.rax, 0),
+    r("ax", st.s16, rc.rax, 0), r("ah", st.s8, rc.rax, 0),
+    r("al", st.s8, rc.rax, 0),
+    r("rbx", st.s64, rc.rbx, 3), r("ebx", st.s32, rc.rbx, 3),
+    r("bx", st.s16, rc.rbx, 3), r("bh", st.s8, rc.rbx, 3),
+    r("bl", st.s8, rc.rbx, 3),
+    r("rcx", st.s64, rc.rcx, 1), r("ecx", st.s32, rc.rcx, 1),
+    r("cx", st.s16, rc.rcx, 1), r("ch", st.s8, rc.rcx, 1),
+    r("cl", st.s8, rc.rcx, 1),
+    r("rdx", st.s64, rc.rdx, 2), r("edx", st.s32, rc.rdx, 2),
+    r("dx", st.s16, rc.rdx, 2), r("dh", st.s8, rc.rdx, 2),
+    r("dl", st.s8, rc.rdx, 2),
+    r("rsi", st.s64, rc.rsi, 6), r("esi", st.s32, rc.rsi, 6),
+    r("si", st.s16, rc.rsi, 6), r("sil", st.s8, rc.rsi, 6),
+    r("rdi", st.s64, rc.rdi, 7), r("edi", st.s32, rc.rdi, 7),
+    r("di", st.s16, rc.rdi, 7), r("dil", st.s8, rc.rdi, 7),
+    r("rsp", st.s64, rc.rsp, 4), r("esp", st.s32, rc.rsp, 4),
+    r("sp", st.s16, rc.rsp, 4), r("spl", st.s8, rc.rsp, 4),
+    r("rbp", st.s64, rc.rbp, 5), r("ebp", st.s32, rc.rbp, 5),
+    r("bp", st.s16, rc.rbp, 5), r("bpl", st.s8, rc.rbp, 5),
+    r("r8", st.s64, rc.r8, 0), r("r8d", st.s32, rc.r8, 0),
+    r("r8w", st.s16, rc.r8, 0), r("r8b", st.s8, rc.r8, 0),
+    r("r9", st.s64, rc.r9, 1), r("r9d", st.s32, rc.r9, 1),
+    r("r9w", st.s16, rc.r9, 1), r("r9b", st.s8, rc.r9, 1),
+    r("r10", st.s64, rc.r10, 2), r("r10d", st.s32, rc.r10, 2),
+    r("r10w", st.s16, rc.r10, 2), r("r10b", st.s8, rc.r10, 2),
+    r("r11", st.s64, rc.r11, 3), r("r11d", st.s32, rc.r11, 3),
+    r("r11w", st.s16, rc.r11, 3), r("r11b", st.s8, rc.r11, 3),
+    r("r12", st.s64, rc.r12, 4), r("r12d", st.s32, rc.r12, 4),
+    r("r12w", st.s16, rc.r12, 4), r("r12b", st.s8, rc.r12, 4),
+    r("r13", st.s64, rc.r13, 5), r("r13d", st.s32, rc.r13, 5),
+    r("r13w", st.s16, rc.r13, 5), r("r13b", st.s8, rc.r13, 5),
+    r("r14", st.s64, rc.r14, 6), r("r14d", st.s32, rc.r14, 6),
+    r("r14w", st.s16, rc.r14, 6), r("r14b", st.s8, rc.r14, 6),
+    r("r15", st.s64, rc.r15, 7), r("r15d", st.s32, rc.r15, 7),
+    r("r15w", st.s16, rc.r15, 7), r("r15b", st.s8, rc.r15, 7),
 ];
 
 template regi(string name)
@@ -122,10 +142,10 @@ struct Instruction
     enum OperandType
     {
         none,
-        label   = 1 << 0,
-        r       = 1 << 1,
-        imm     = 1 << 2,
-        mem     = 1 << 3,
+        label = 1 << 0,
+        r = 1 << 1,
+        imm = 1 << 2,
+        mem = 1 << 3,
         rm
     }
 
@@ -186,15 +206,18 @@ struct Instruction
     }
 }
 
-private alias i     = Instruction;
-private alias ot    = i.OperandType;
-private alias oe    = i.OperandEncoding;
-private const ri    = Register.init;
-private alias rex   = i.Rex;
-private alias reg   = i.RegType;
-private alias f     = i.Flags;
-private alias m     = Mneumonic;
+private alias i = Instruction;
+private alias ot = i.OperandType;
+private alias oe = i.OperandEncoding;
+private const ri = Register.init;
+private alias rex = i.Rex;
+private alias reg = i.RegType;
+private alias f = i.Flags;
+private alias m = Mneumonic;
 immutable INSTRUCTIONS = [
+
+    
+
     i(m.adc, "adcali8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x14], [ot.r, ot.imm, ot.none], [st.s8,  st.s8,  st.infer], [oe.none, oe.imm, oe.none], [regi!"al", ri, ri], f.none),
 i(m.adc, "adcaxi16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x15], [ot.r, ot.imm, ot.none], [st.s16,  st.s16,  st.infer], [oe.none, oe.imm, oe.none], [regi!"ax", ri, ri], f.none),
 i(m.adc, "adceaxi32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x15], [ot.r, ot.imm, ot.none], [st.s32,  st.s32,  st.infer], [oe.none, oe.imm, oe.none], [regi!"eax", ri, ri], f.none),
@@ -287,6 +310,129 @@ i(m.bts, "btsrm64r64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, 
 i(m.bts, "btsrm16i8", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg5, [0xF,0xBA], [ot.rm, ot.imm, ot.none], [st.s16,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
 i(m.bts, "btsrm32i8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.reg5, [0xF,0xBA], [ot.rm, ot.imm, ot.none], [st.s32,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
 i(m.bts, "btsrm64i8", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.reg5, [0xF,0xBA], [ot.rm, ot.imm, ot.none], [st.s64,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.call, "calli32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xE8], [ot.imm, ot.none, ot.none], [st.s32,  st.infer,  st.infer], [oe.imm, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.call, "callrm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.reg2, [0xFF], [ot.rm, ot.none, ot.none], [st.s64,  st.infer,  st.infer], [oe.rm_rm, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cbw, "cbwnone", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x98], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cwde, "cwdenone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x98], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cdqe, "cdqenone", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0x98], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.clac, "clacnone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x1,0xCA], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.clc, "clcnone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF8], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cld, "cldnone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xFC], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.clflush, "clflushm8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.reg7, [0xF,0xAE], [ot.mem, ot.none, ot.none], [st.s8,  st.infer,  st.infer], [oe.rm_rm, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.clflushopt, "clflushoptm8", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg7, [0xF,0xAE], [ot.mem, ot.none, ot.none], [st.s8,  st.infer,  st.infer], [oe.rm_rm, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cli, "clinone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xFA], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.clts, "cltsnone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x6], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.clwb, "clwbm8", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg6, [0xF,0xAE], [ot.mem, ot.none, ot.none], [st.s8,  st.infer,  st.infer], [oe.rm_rm, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cmc, "cmcnone", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF5], [ot.none, ot.none, ot.none], [st.infer,  st.infer,  st.infer], [oe.none, oe.none, oe.none], [ri, ri, ri], f.none),
+i(m.cmova, "cmovar16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x47], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmova, "cmovar32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x47], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmova, "cmovar64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x47], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovae, "cmovaer16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovae, "cmovaer32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovae, "cmovaer64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovb, "cmovbr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovb, "cmovbr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovb, "cmovbr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovbe, "cmovber16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x46], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovbe, "cmovber32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x46], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovbe, "cmovber64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x46], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovc, "cmovcr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovc, "cmovcr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovc, "cmovcr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmove, "cmover16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x44], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmove, "cmover32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x44], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmove, "cmover64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x44], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovg, "cmovgr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4F], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovg, "cmovgr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4F], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovg, "cmovgr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4F], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovge, "cmovger16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4D], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovge, "cmovger32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4D], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovge, "cmovger64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4D], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovl, "cmovlr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4C], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovl, "cmovlr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4C], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovl, "cmovlr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4C], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovle, "cmovler16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4E], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovle, "cmovler32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4E], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovle, "cmovler64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4E], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovna, "cmovnar16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x46], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovna, "cmovnar32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x46], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovna, "cmovnar64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x46], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnae, "cmovnaer16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnae, "cmovnaer32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnae, "cmovnaer64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x42], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnb, "cmovnbr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnb, "cmovnbr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnb, "cmovnbr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnbe, "cmovnber16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x47], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnbe, "cmovnber32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x47], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnbe, "cmovnber64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x47], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnc, "cmovncr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnc, "cmovncr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnc, "cmovncr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x43], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovne, "cmovner16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x45], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovne, "cmovner32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x45], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovne, "cmovner64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x45], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovng, "cmovngr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4E], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovng, "cmovngr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4E], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovng, "cmovngr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4E], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnge, "cmovnger16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4C], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnge, "cmovnger32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4C], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnge, "cmovnger64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4C], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnl, "cmovnlr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4D], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnl, "cmovnlr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4D], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnl, "cmovnlr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4D], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnle, "cmovnler16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4F], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnle, "cmovnler32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4F], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnle, "cmovnler64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4F], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovno, "cmovnor16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x41], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovno, "cmovnor32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x41], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovno, "cmovnor64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x41], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnp, "cmovnpr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4B], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnp, "cmovnpr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4B], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnp, "cmovnpr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4B], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovns, "cmovnsr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x49], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovns, "cmovnsr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x49], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovns, "cmovnsr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x49], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnz, "cmovnzr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x45], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnz, "cmovnzr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x45], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnz, "cmovnzr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x45], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovo, "cmovor16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x40], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovo, "cmovor32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x40], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovo, "cmovor64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x40], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovp, "cmovpr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4A], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovp, "cmovpr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4A], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovp, "cmovpr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4A], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovpe, "cmovper16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4A], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovpe, "cmovper32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4A], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovpe, "cmovper64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4A], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnpo, "cmovnpor16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x4B], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnpo, "cmovnpor32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x4B], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovnpo, "cmovnpor64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x4B], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovs, "cmovsr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x48], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovs, "cmovsr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x48], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovs, "cmovsr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x48], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovz, "cmovzr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0xF,0x44], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovz, "cmovzr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0xF,0x44], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmovz, "cmovzr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0xF,0x44], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmpali8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x3C], [ot.r, ot.imm, ot.none], [st.s8,  st.s8,  st.infer], [oe.none, oe.imm, oe.none], [regi!"al", ri, ri], f.none),
+i(m.cmp, "cmpaxi16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x3D], [ot.r, ot.imm, ot.none], [st.s16,  st.s16,  st.infer], [oe.none, oe.imm, oe.none], [regi!"ax", ri, ri], f.none),
+i(m.cmp, "cmpeaxi32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x3D], [ot.r, ot.imm, ot.none], [st.s32,  st.s32,  st.infer], [oe.none, oe.imm, oe.none], [regi!"eax", ri, ri], f.none),
+i(m.cmp, "cmpraxi32", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0x3D], [ot.r, ot.imm, ot.none], [st.s64,  st.s32,  st.infer], [oe.none, oe.imm, oe.none], [regi!"rax", ri, ri], f.none),
+i(m.cmp, "cmprm8i8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.reg7, [0x80], [ot.rm, ot.imm, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm16i16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg7, [0x81], [ot.rm, ot.imm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm32i32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.reg7, [0x81], [ot.rm, ot.imm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm64i32", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.reg7, [0x81], [ot.rm, ot.imm, ot.none], [st.s64,  st.s32,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm16i8", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.reg7, [0x83], [ot.rm, ot.imm, ot.none], [st.s16,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm32i8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.reg7, [0x83], [ot.rm, ot.imm, ot.none], [st.s32,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm64i8", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.reg7, [0x83], [ot.rm, ot.imm, ot.none], [st.s64,  st.s8,  st.infer], [oe.rm_rm, oe.imm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm8r8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x38], [ot.rm, ot.r, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm16r16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x39], [ot.rm, ot.r, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm32r32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x39], [ot.rm, ot.r, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmprm64r64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0x39], [ot.rm, ot.r, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_rm, oe.rm_reg, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmpr8rm8", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x3A], [ot.r, ot.rm, ot.none], [st.s8,  st.s8,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmpr16rm16", pg1.none, pg2.none, pg3.opSize, pg4.none, rex.none, reg.none, [0x3B], [ot.r, ot.rm, ot.none], [st.s16,  st.s16,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmpr32rm32", pg1.none, pg2.none, pg3.none, pg4.none, rex.none, reg.none, [0x3B], [ot.r, ot.rm, ot.none], [st.s32,  st.s32,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
+i(m.cmp, "cmpr64rm64", pg1.none, pg2.none, pg3.none, pg4.none, rex.w, reg.none, [0x3B], [ot.r, ot.rm, ot.none], [st.s64,  st.s64,  st.infer], [oe.rm_reg, oe.rm_rm, oe.none], [ri, ri, ri], f.none),
 
 ];
 
@@ -295,7 +441,10 @@ enum Mneumonic
     FAILSAFE,
 
     // PSUEDO_MNEUMONICS
-    db, dw, dd, dq,
+    db,
+    dw,
+    dd,
+    dq,
 
     // ACTUAL_MNEUMONICS
     aaa,
@@ -380,12 +529,13 @@ enum Mneumonic
     cmovnbe,
     cmovnc,
     cmovne,
-    comvng,
+    cmovng,
     cmovnge,
     cmovnl,
     cmovnle,
     cmovno,
     cmovnp,
+    cmovnpo,
     cmovns,
     cmovnz,
     cmovo,
@@ -832,7 +982,7 @@ enum Mneumonic
     pmaxud,
     pmaxuq,
     pmaxuw,
-    
+
     ptest,
     ptwrite,
     punpckhbw,
@@ -948,7 +1098,7 @@ enum Mneumonic
     unpcklps,
     valignd,
     valignq,
-    
+
     wait,
     wbinvd,
     wrfsbase,
